@@ -1,5 +1,22 @@
 language: cpp
 compiler:
-  - clang
-  - gcc
+    - clang
+    - gcc
 os: linux
+
+addons:
+    apt:
+        sources:
+            - llvm-toolchain-precise
+            - ubuntu-toolchain-r-test
+        packages:
+            - clang-3.7
+            - g++-5
+            - gcc-5
+
+before_script:
+  - mkdir build
+  - cd build
+  - cmake ..
+
+script: make
