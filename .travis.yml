@@ -40,8 +40,6 @@ install:
       brew install cmake
     fi
 
-    bash # latest version as of this post is 4.1.2 wget http://download.zeromq.org/zeromq-4.1.2.tar.gz tar -xvf zeromq-4.1.2.tar.gz cd zeromq-4.1.2 ./autogen.sh ./configure && make check sudo make install sudo ldconfig
-
   ############################################################################
   # Install zeroMQ
   ############################################################################
