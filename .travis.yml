@@ -1,19 +1,19 @@
 language: cpp
 compiler:
-    - clang
-    - gcc
+  - clang
+  - gcc
 os: linux
 
 addons:
 apt:
-    sources:
-        - llvm-toolchain-precise-3.7
-        - ubuntu-toolchain-r-test
-    packages:
-        - clang-3.7
-        - clang-3.7
-        - g++-5
-        - gcc-5
+  sources:
+    - llvm-toolchain-precise-3.7
+    - ubuntu-toolchain-r-test
+  packages:
+    - clang-3.7
+    - clang-3.7
+    - g++-5
+    - gcc-5
 
 install:
   ############################################################################
@@ -35,8 +35,10 @@ install:
     fi
 
 before_script:
-  - mkdir build
-  - cd build
-  - cmake .. -DCMAKE_CXX_COMPILER=${COMPILER}
+  ############################################################################
+  # Go back to the root of the project and setup the build directory
+  ############################################################################
+  - cd ${TRAVIS_BUILD_DIR}
+  - (mkdir build && cd build && cmake .. -DCMAKE_CXX_COMPILER=${COMPILER} ${CMAKE_OPTIONS})
 
 script: make
