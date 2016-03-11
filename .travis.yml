@@ -14,6 +14,12 @@ apt:
     - clang-3.7
     - g++-5
     - gcc-5
+    - libmagic-dev
+    - libmagic1
+    - libtool
+    - autoconf
+    - automake
+    - libzmq-dev
 
 install:
   ############################################################################
@@ -32,6 +38,20 @@ install:
       export PATH=${DEPS_DIR}/cmake/bin:${PATH}
     else
       brew install cmake
+    fi
+
+    bash # latest version as of this post is 4.1.2 wget http://download.zeromq.org/zeromq-4.1.2.tar.gz tar -xvf zeromq-4.1.2.tar.gz cd zeromq-4.1.2 ./autogen.sh ./configure && make check sudo make install sudo ldconfig
+
+  ############################################################################
+  # Install zeroMQ
+  ############################################################################
+  - |
+    if [[ "${TRAVIS_OS_NAME}" == "linux" ]]; then
+      ZMQ_URL="http://download.zeromq.org/zeromq-4.1.4.tar.gz"
+      mkdir zmq && travis_retry wget --no-check-certificate --quiet -O - ${ZMQ_URL} | tar --strip-components=1 -xz -C zmq
+      cd zmq && ./autogen.sh ./configure && make
+      export PATH=${DEPS_DIR}/zmq/bin:${PATH}
+      export ZMQ_ROOT=${DEPS_DIR}/zmq
     fi
 
 before_script:
