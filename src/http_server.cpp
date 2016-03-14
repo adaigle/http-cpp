@@ -3,6 +3,7 @@
 #include <cassert>
 #include <cerrno>
 #include <cstdlib>
+#include <ctime>
 #include <exception>
 #include <iostream>
 #include <regex>
@@ -13,11 +14,12 @@
 #include <vector>
 
 #include <boost/filesystem.hpp>
+#include <boost/date_time/local_time/local_time.hpp>
 
 #include "logger.hpp"
 
 http_server::http_server(uint8_t io_threads) :
-    context(io_threads), http_sockets()
+    context(io_threads), http_sockets(), inproc_socket(context, zmq::socket_type::dealer)
 {
 }
 
@@ -41,7 +43,7 @@ void http_server::connect(uint16_t port, const std::string& website_root, const 
     }
 
     auto socket_it = http_sockets.insert(http_sockets.end(),
-        socket_info(port, std::make_unique<zmq::socket_t>(context, zmq::socket_type::stream)));
+        socket_info(port, std::make_unique<zmq::socket_t>(context, zmq::socket_type::router)));
     try {
         // Executing the binding.
         std::ostringstream address_builder;
@@ -56,14 +58,31 @@ void http_server::connect(uint16_t port, const std::string& website_root, const 
 
 void http_server::run()
 {
+    // Launch the worker threads...
+    logger::debug() << "Launching worker thread..." << logger::endl;
+    inproc_socket.bind("inproc://http_workers");
+    for (size_t i = 0; i < 4; ++i) {
+        workers.emplace_back(context);
+        workers.back().start();
+    }
+
     logger::info() << "Server ready." << logger::endl;
 
     // Initialize the lists of sockets to poll from
     std::vector<zmq::pollitem_t> poll_items;
     poll_items.reserve(http_sockets.size());
+    //poll_items.emplace_back(zmq::pollitem_t{static_cast<void*>(http_socket), 0, ZMQ_POLLIN, 0});
     for (socket_info& info : http_sockets) {
         poll_items.emplace_back(zmq::pollitem_t{static_cast<void*>(*info.socket), 0, ZMQ_POLLIN, 0});
     }
+
+
+    /*try {
+        zmq::proxy(http_socket, inproc_socket, nullptr);
+    } catch (std::exception& e) {
+        logger::error() << "Server error, proxy failed due to the following exception: " << logger::endl;
+        logger::error() << e.what() << logger::endl;
+    }*/
 
     while (true) {
         // Extract identity from the request.
@@ -81,31 +100,38 @@ void http_server::run()
         // Construct a transaction for the request.
         http_transaction_t transaction(std::move(id));
         logger::trace() << "Transaction initiated with id '" << transaction.id << "'." << logger::endl;
+        try {
 
-        if (!extract_request(*http_sockets[i].socket, transaction.request))
-            continue; // Ignore the current request if the receiving fails...
+            if (!extract_request(*http_sockets[i].socket, transaction.request))
+                continue; // Ignore the current request if the receiving fails...
 
-        // Find the website to assign the request to...
+            // Find the website to assign the request to...
 
-        // Create response.
-        transaction.response.http_version = transaction.request.http_version;
+            // Create response.
+            transaction.response.http_version = transaction.request.http_version;
 
-        {
-            const std::string host = extract_host(transaction.request);
-            const virtual_website& website = find_website(http_sockets[i].port, transaction.request);
+            {
+                const std::string host = extract_host(transaction.request);
+                const virtual_website& website = find_website(http_sockets[i].port, transaction.request);
 
-            const auto& host_it = transaction.request.request_header.find("Host");
-            const auto& header_end = transaction.request.request_header.cend();
-            const bool success = website.lookup_ressource(transaction.request.request_uri,
-                                                          (host_it != header_end) ? host_it->second : "",
-                                                          transaction.response);
+                const auto& host_it = transaction.request.request_header.find("Host");
+                const auto& header_end = transaction.request.request_header.cend();
+                const bool success = website.lookup_ressource(transaction.request.request_uri,
+                                                              (host_it != header_end) ? host_it->second : "",
+                                                              transaction.response);
 
-            if (!success) {
-                transaction.response.status_code = 404;
-            } else {
-                transaction.response.status_code = 200;
+                if (!success) {
+                    transaction.response.status_code = 404;
+                } else {
+                    transaction.response.status_code = 200;
+                }
             }
+        } catch(...) {
+            transaction.response.status_code = 500;
         }
+
+        transaction.response.response_header["Server"] = "http-cpp v0.1";
+        transaction.response.general_header["Date"] = http_date();
 
         if (!send_response(*http_sockets[i].socket, transaction))
             continue; // Ignore the current request if the receiving fails...
@@ -142,10 +168,6 @@ bool http_server::extract_request(zmq::socket_t& socket, http_request& request)
 
 bool http_server::send_response(zmq::socket_t& socket, http_transaction_t& t)
 {
-    //std::cout << "RESPONSE" << std::endl;
-    //std::cout << t.response.content << std::endl;
-    //std::cout << std::endl;
-
     std::ostringstream response_builder;
     response_builder << t.response;
     const std::string response = response_builder.str();
@@ -179,16 +201,31 @@ bool http_server::send_response(zmq::socket_t& socket, http_transaction_t& t)
     return true;
 }
 
+// Construct and HTTP-date as an rfc1123-date
+std::string http_server::http_date()
+{
+    std::stringstream date_builder;
+
+    boost::local_time::local_date_time t(boost::local_time::local_sec_clock::local_time(boost::local_time::time_zone_ptr()));
+    boost::local_time::local_time_facet* lf(new boost::local_time::local_time_facet("%a, %d %b %Y %H:%M:%S GMT"));
+    date_builder.imbue(std::locale(date_builder.getloc(), lf));
+    date_builder << t;
+
+    return date_builder.str();
+}
+
 std::string http_server::extract_host(http_request& request)
 {
     std::string host = request.request_header["Host"];
 
     // Check if the Request-URI is an absoluteURI of the following form:
     // "http:" "//" host [ ":" port ] [ abs_path [ "?" query ]]
-    std::regex absolute_uri_regex("http:\\/\\/([^\\/:]+)(:([0-9]+))?([^\\?]*)(\\?(.*))?");
+    static std::regex absolute_uri_regex("http:\\/\\/([^\\/:]+)(:([0-9]+))?([^\\?]*)(\\?(.*))?", std::regex_constants::ECMAScript | std::regex_constants::optimize);
+    static std::regex absolute_path_regex("(\\/([^\\?]*))(\\?(.*))?", std::regex_constants::ECMAScript | std::regex_constants::optimize);
 
     std::smatch matches;
     if (std::regex_match(request.request_uri, matches, absolute_uri_regex)) {
+
         // In this case, RFC2616:5.2 says to ignore any host header.
         // We rewrite it in the request_header field.
 
@@ -197,16 +234,35 @@ std::string http_server::extract_host(http_request& request)
         const std::string raw_abs_path = matches[4];
         const std::string raw_query = matches[6];
 
-        logger::trace() << "host: " << raw_host << logger::endl;
-        logger::trace() << "port: " << raw_port << logger::endl;
-        logger::trace() << "abs_path: " << raw_abs_path << logger::endl;
-        logger::trace() << "query: " << raw_query << logger::endl;
+        logger::trace() << "Absolute URI detected: " << logger::endl;
+        logger::trace() << " - Host: " << raw_host << "(" << raw_port << ")" << logger::endl;
+        logger::trace() << " - Abs_path: " << raw_abs_path << logger::endl;
+        logger::trace() << " - Query: " << raw_query << logger::endl;
 
-        host = request.request_header["Host"] = raw_host;
+        request.request_header["Host"] = raw_host;
+        return raw_host;
     }
-    logger::trace() << "not an absolute uri..." << logger::endl;
 
-    return host;
+    if (std::regex_match(request.request_uri, matches, absolute_path_regex)) {
+        const std::string raw_abs_path = matches[1];
+        const std::string raw_query = matches[4];
+
+        logger::trace() << "Absolute path detected: " << logger::endl;
+        logger::trace() << " - Abs_path: " << raw_abs_path << logger::endl;
+        logger::trace() << " - Query: " << raw_query << logger::endl;
+
+        return request.request_header["Host"];
+    }
+
+    if (request.request_uri == "*") {
+        // Nothing to do.
+        return "*";
+    }
+
+    // TODO: Handle 'authority'-based request.
+
+    logger::warn() << "Invalid Request-URI: " << request.request_uri << logger::endl;
+    throw std::invalid_argument("Invalid Request-URI parameter in the request, could not detect a valid format.");
 }
 
 const virtual_website& http_server::find_website(uint16_t port, http_request& request) const

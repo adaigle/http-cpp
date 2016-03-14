@@ -19,8 +19,6 @@
 virtual_website::virtual_website(uint16_t port, const std::string& root, const std::string& name) noexcept :
     port(port), root(root), name(name)
 {
-    logger::trace() << "Creating website '" << name << "'..." << logger::endl;
-
 #if defined(HAVE_LIBMAGIC)
     if (magic_handle == nullptr) {
         magic_handle = ::magic_open(MAGIC_ERROR | MAGIC_MIME);
@@ -32,10 +30,8 @@ virtual_website::virtual_website(uint16_t port, const std::string& root, const s
         ::magic_load(magic_handle, LIBMAGIC_MAGIC_FILE);
 
         const char* error = ::magic_error(magic_handle);
-        if (error != nullptr)
-            logger::warn() << "libmagic error: " << error << logger::endl;
-        else
-            logger::debug() << "Successfully loaded magic database." << logger::endl;
+        if (error != nullptr) logger::warn() << "libmagic error: " << error << logger::endl;
+        else logger::debug() << "Successfully loaded magic database." << logger::endl;
     }
 #endif
 }

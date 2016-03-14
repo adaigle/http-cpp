@@ -53,7 +53,7 @@ endif()
 # Include boost
 set(Boost_USE_STATIC_LIBS ON)
 set(Boost_COMPILER "-clang37")
-find_package(Boost 1.60 COMPONENTS system filesystem REQUIRED)
+find_package(Boost 1.60 COMPONENTS system filesystem date_time REQUIRED)
 if(${Boost_FOUND})
     add_library(boost INTERFACE IMPORTED)
     set_property(TARGET boost PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${Boost_INCLUDE_DIR})
@@ -69,6 +69,12 @@ if(${Boost_FOUND})
     set_property(TARGET boost-filesystem PROPERTY IMPORTED_LOCATION "${Boost_FILESYSTEM_LIBRARY}")
     set_property(TARGET boost-filesystem PROPERTY IMPORTED_LOCATION_DEBUG "${Boost_FILESYSTEM_LIBRARY_DEBUG}")
     set_property(TARGET boost-filesystem PROPERTY IMPORTED_LOCATION_RELEASE "${Boost_FILESYSTEM_LIBRARY_RELEASE}")
+
+    add_library(boost-date_time STATIC IMPORTED)
+    set_property(TARGET boost-date_time PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${Boost_INCLUDE_DIR})
+    set_property(TARGET boost-date_time PROPERTY IMPORTED_LOCATION "${Boost_DATE_TIME_LIBRARY}")
+    set_property(TARGET boost-date_time PROPERTY IMPORTED_LOCATION_DEBUG "${Boost_DATE_TIME_LIBRARY_DEBUG}")
+    set_property(TARGET boost-date_time PROPERTY IMPORTED_LOCATION_RELEASE "${Boost_DATE_TIME_LIBRARY_RELEASE}")
 endif()
 
 ##############################################################################
@@ -91,6 +97,8 @@ add_executable(http
     src/main.cpp
     src/http_server.h
     src/http_server.cpp
+    src/http_worker.h
+    src/http_worker.cpp
     src/virtual_website.hpp
     src/virtual_website.h
     src/virtual_website.cpp
@@ -113,12 +121,17 @@ target_link_libraries(http
     boost
     boost-system
     boost-filesystem
+    boost-date_time
     zmq
     zmqcpp
     libmagic
     ${THREADING_LIBRARY}
     ${STANDARD_LIBRARY}
 )
+
+if (WIN32)
+    set_property(TARGET http APPEND PROPERTY COMPILE_DEFINITIONS BOOST_USE_WINDOWS_H)
+endif()
 
 ##############################################################################
 # Post build commands

@@ -4,7 +4,7 @@
 
 int main(int argc, char* argv[])
 {
-    logger::log_level(logger::type::debug);
+    logger::log_level(logger::type::trace);
     logger::info() << "Starting the server..." << logger::endl;
 
     http_server server;

@@ -9,17 +9,17 @@ AlignOperands:   true
 AlignTrailingComments: true
 AllowAllParametersOfDeclarationOnNextLine: true
 AllowShortBlocksOnASingleLine: false
-AllowShortCaseLabelsOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: true
 AllowShortFunctionsOnASingleLine: All
 AllowShortIfStatementsOnASingleLine: false
 AllowShortLoopsOnASingleLine: false
 AlwaysBreakAfterDefinitionReturnType: None
 AlwaysBreakBeforeMultilineStrings: false
-AlwaysBreakTemplateDeclarations: false
+AlwaysBreakTemplateDeclarations: true
 BinPackArguments: true
 BinPackParameters: true
 BreakBeforeBinaryOperators: None
-BreakBeforeBraces: Attach
+BreakBeforeBraces: Linux
 BreakBeforeTernaryOperators: true
 BreakConstructorInitializersBeforeComma: false
 ColumnLimit:     120
@@ -31,7 +31,7 @@ DerivePointerAlignment: false
 DisableFormat:   false
 ExperimentalAutoDetectBinPacking: false
 ForEachMacros:   [ foreach, Q_FOREACH, BOOST_FOREACH ]
-IndentCaseLabels: false
+IndentCaseLabels: true
 IndentWidth:     4
 IndentWrappedFunctionNames: false
 KeepEmptyLinesAtTheStartOfBlocks: true

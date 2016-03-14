@@ -24,6 +24,7 @@ struct http_constants
     };
 
     static constexpr char SP = ' ';
+    static constexpr char CM = ',';
     static constexpr auto CRLF = "\r\n";
 
     static constexpr auto METHODS = {"OPTIONS", "GET", "HEAD", "POST", "PUT", "DELETE", "TRACE", "CONNECT"};
@@ -124,11 +125,11 @@ std::basic_ostream<CharT, Traits>& operator<< (std::basic_ostream<CharT, Traits>
     stream << response.http_version << http_constants::SP << response.status_code << http_constants::SP << http_constants::reason_phrase(response.status_code) << http_constants::CRLF;
 
     for (const auto& h : response.general_header)
-        stream << h.first << ":" << h.second << http_constants::CRLF;
+        stream << h.first << ": " << h.second << http_constants::CRLF;
     for (const auto& h : response.response_header)
-        stream << h.first << ":" << h.second << http_constants::CRLF;
+        stream << h.first << ": " << h.second << http_constants::CRLF;
     for (const auto& h : response.entity_header)
-        stream << h.first << ":" << h.second << http_constants::CRLF;
+        stream << h.first << ": " << h.second << http_constants::CRLF;
 
     stream << http_constants::CRLF;
     stream << response.message_body;
