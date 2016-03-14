@@ -13,4 +13,17 @@ void http_worker::start()
 
 void http_worker::run()
 {
+    while (true) {
+        ///////////////////////////////////////////////////
+        // 1. Extract the request from the inproc messaging queue.
+
+        ///////////////////////////////////////////////////
+        // 2. Detect the website based on the host/port of the requets-URI.
+
+        ///////////////////////////////////////////////////
+        // 3. Load the appropriate ressource from the website.
+
+        ///////////////////////////////////////////////////
+        // 4. Construct the response and complete the request.
+    }
 }

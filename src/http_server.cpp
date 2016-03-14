@@ -19,7 +19,7 @@
 #include "logger.hpp"
 
 http_server::http_server(uint8_t io_threads) :
-    context(io_threads), http_sockets(), inproc_socket(context, zmq::socket_type::dealer)
+    context(io_threads), http_socket(context, zmq::socket_type::stream), http_sockets(), inproc_socket(context, zmq::socket_type::dealer)
 {
 }
 
@@ -71,7 +71,6 @@ void http_server::run()
     // Initialize the lists of sockets to poll from
     std::vector<zmq::pollitem_t> poll_items;
     poll_items.reserve(http_sockets.size());
-    //poll_items.emplace_back(zmq::pollitem_t{static_cast<void*>(http_socket), 0, ZMQ_POLLIN, 0});
     for (socket_info& info : http_sockets) {
         poll_items.emplace_back(zmq::pollitem_t{static_cast<void*>(*info.socket), 0, ZMQ_POLLIN, 0});
     }

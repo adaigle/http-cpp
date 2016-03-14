@@ -40,6 +40,7 @@ private:
 
     zmq::context_t context;
     std::vector<socket_info> http_sockets;
+    zmq::socket_t http_socket;
     zmq::socket_t inproc_socket;
 
     std::set<virtual_website> websites;
