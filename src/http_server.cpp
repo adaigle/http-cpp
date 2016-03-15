@@ -2,8 +2,8 @@
 
 #include <cassert>
 #include <cerrno>
+#include <chrono>
 #include <cstdlib>
-#include <ctime>
 #include <exception>
 #include <iostream>
 #include <regex>
@@ -14,24 +14,38 @@
 #include <vector>
 
 #include <boost/filesystem.hpp>
-#include <boost/date_time/local_time/local_time.hpp>
 
 #include "logger.hpp"
 
+using namespace std::chrono_literals;
+
 http_server::http_server(uint8_t io_threads) :
-    context(io_threads), http_socket(context, zmq::socket_type::stream), http_sockets(), inproc_socket(context, zmq::socket_type::dealer)
+    context(io_threads), http_socket(context, zmq::socket_type::stream),
+    inproc_status_socket(context, zmq::socket_type::pub), inproc_request_socket(context, zmq::socket_type::router)
 {
+    try {
+        inproc_status_socket.bind("inproc://http_workers_status");
+    } catch (std::exception& e) {
+        logger::error() << "Server error, cannot bind the HTTP worker status channel: " << logger::endl;
+        logger::error() << e.what() << logger::endl;
+        throw e;
+    }
+    try {
+        inproc_request_socket.bind("inproc://http_workers_requests");
+    } catch (std::exception& e) {
+        logger::error() << "Server error, cannot bind the HTTP worker request channel: " << logger::endl;
+        logger::error() << e.what() << logger::endl;
+        throw e;
+    }
 }
 
 void http_server::connect(uint16_t port, const std::string& website_root, const std::string& website_name)
 {
     logger::trace() << "Connecting to port " << port << " for website '" << website_name << "'..." << logger::endl;
 
-    // Check if the port is already used.
-    const auto find_it = std::find_if(std::cbegin(http_sockets), std::cend(http_sockets),
-                                        [&port](const socket_info& info) { return info.port == port; });
-    if (find_it != http_sockets.cend())
-        throw std::invalid_argument("The binding of the socket was unsuccessful. Did you register two websites under the same port ?");
+    // TODO: Check if the port is already used.
+    //if (find_it != http_sockets.cend())
+    //    throw std::invalid_argument("The binding of the socket was unsuccessful. Did you register two websites under the same port ?");
 
     // Check if the website directory exists.
     if (!boost::filesystem::is_directory(website_root))
@@ -42,231 +56,51 @@ void http_server::connect(uint16_t port, const std::string& website_root, const 
         throw std::invalid_argument("Invalid website identifier. Is the port and name combination already used ?");
     }
 
-    auto socket_it = http_sockets.insert(http_sockets.end(),
-        socket_info(port, std::make_unique<zmq::socket_t>(context, zmq::socket_type::router)));
     try {
         // Executing the binding.
         std::ostringstream address_builder;
         address_builder << "tcp://*:" << port;
-        socket_it->socket->bind(address_builder.str());
+        http_socket.bind(address_builder.str());
     } catch (...) {
         websites.erase(insert_iter.first);
-        http_sockets.erase(socket_it);
         throw;
     }
 }
 
 void http_server::run()
 {
+    // http://blog.fanout.io/2014/02/18/fun-with-zurl-the-http-websocket-client-daemon/
+
     // Launch the worker threads...
     logger::debug() << "Launching worker thread..." << logger::endl;
-    inproc_socket.bind("inproc://http_workers");
     for (size_t i = 0; i < 4; ++i) {
-        workers.emplace_back(context);
-        workers.back().start();
+        workers.emplace_front(context, i, websites);
+        workers.front().start();
     }
+
+    std::this_thread::sleep_for(500ms);
+
+    logger::debug() << "Sending start signal..." << logger::endl;
+    const std::string start = "START";
+    zmq::message_t start_message(start.c_str(), start.size());
+    inproc_status_socket.send(start_message);
 
     logger::info() << "Server ready." << logger::endl;
 
-    // Initialize the lists of sockets to poll from
-    std::vector<zmq::pollitem_t> poll_items;
-    poll_items.reserve(http_sockets.size());
-    for (socket_info& info : http_sockets) {
-        poll_items.emplace_back(zmq::pollitem_t{static_cast<void*>(*info.socket), 0, ZMQ_POLLIN, 0});
-    }
-
-
-    /*try {
-        zmq::proxy(http_socket, inproc_socket, nullptr);
+    try {
+        zmq::proxy(static_cast<void*>(http_socket), static_cast<void*>(inproc_request_socket), nullptr);
     } catch (std::exception& e) {
         logger::error() << "Server error, proxy failed due to the following exception: " << logger::endl;
         logger::error() << e.what() << logger::endl;
-    }*/
-
-    while (true) {
-        // Extract identity from the request.
-
-        size_t i;
-        zmq::poll(poll_items, -1);
-        for (i = 0; i < poll_items.size() && !(poll_items[i].revents & ZMQ_POLLIN); ++i);
-
-        if (i == poll_items.size())
-            continue;
-
-        identity_t id;
-        id.length = http_sockets[i].socket->recv(&id.identity, id.identity.size());
-
-        // Construct a transaction for the request.
-        http_transaction_t transaction(std::move(id));
-        logger::trace() << "Transaction initiated with id '" << transaction.id << "'." << logger::endl;
-        try {
-
-            if (!extract_request(*http_sockets[i].socket, transaction.request))
-                continue; // Ignore the current request if the receiving fails...
-
-            // Find the website to assign the request to...
-
-            // Create response.
-            transaction.response.http_version = transaction.request.http_version;
-
-            {
-                const std::string host = extract_host(transaction.request);
-                const virtual_website& website = find_website(http_sockets[i].port, transaction.request);
-
-                const auto& host_it = transaction.request.request_header.find("Host");
-                const auto& header_end = transaction.request.request_header.cend();
-                const bool success = website.lookup_ressource(transaction.request.request_uri,
-                                                              (host_it != header_end) ? host_it->second : "",
-                                                              transaction.response);
-
-                if (!success) {
-                    transaction.response.status_code = 404;
-                } else {
-                    transaction.response.status_code = 200;
-                }
-            }
-        } catch(...) {
-            transaction.response.status_code = 500;
-        }
-
-        transaction.response.response_header["Server"] = "http-cpp v0.1";
-        transaction.response.general_header["Date"] = http_date();
-
-        if (!send_response(*http_sockets[i].socket, transaction))
-            continue; // Ignore the current request if the receiving fails...
-    }
-}
-
-bool http_server::extract_request(zmq::socket_t& socket, http_request& request)
-{
-    std::string frame;
-
-    // Extract the request itself.
-    int64_t more;
-    do {
-        zmq::message_t part;
-        socket.recv(&part);
-
-        frame.append(static_cast<char*>(part.data()), part.size());
-
-        size_t more_size = sizeof(more);
-        socket.getsockopt(ZMQ_RCVMORE, &more, &more_size);
-    } while (more);
-
-    // Parse the request
-    http_request::parsing_status code = request.parse(frame);
-    if (code != http_request::parsing_status::success) {
-        if (code == http_request::parsing_status::empty_request) {
-            logger::trace() << "Dropping empty request." << logger::endl;
-        } else {
-            logger::warn() << "parsing error:" << static_cast<size_t>(code) << "." << logger::endl;
-        }
-    }
-    return code == http_request::parsing_status::success;
-}
-
-bool http_server::send_response(zmq::socket_t& socket, http_transaction_t& t)
-{
-    std::ostringstream response_builder;
-    response_builder << t.response;
-    const std::string response = response_builder.str();
-
-    socket.send(&t.id.identity, t.id.length, ZMQ_SNDMORE);
-    zmq::message_t wire_response(response.c_str(), response.size());
-    socket.send(wire_response, ZMQ_SNDMORE);
-
-    // Close the connection with an empty response.
-    socket.send(&t.id.identity, t.id.length, ZMQ_SNDMORE);
-    socket.send(nullptr, 0, ZMQ_SNDMORE);
-    // Keep using ZMQ_SNDMORE to let another client connects.
-
-    const uint8_t first_digit = t.response.status_code / 100;
-    logger::type response_type;
-    switch (first_digit) {
-        case 1: case 3: response_type = logger::type::info; break;
-        case 2: response_type = logger::type::info_green; break;
-        case 4: response_type = logger::type::warning; break;
-        case 5: response_type = logger::type::error; break;
-        default: response_type = logger::type::error;
+        throw e;
     }
 
-    if (logger::check_log(response_type)) {
-        std::string line;
-        std::istringstream input(response);
-        std::getline(input, line);
-        logger::log(response_type) << line << logger::endl;
+    logger::info() << "Shutting down server..." << logger::endl;
+
+    const std::string quit = "QUIT";
+    zmq::message_t quit_message(quit.c_str(), quit.size());
+    inproc_status_socket.send(quit_message);
+    for (auto& worker : workers) {
+        worker.stop();
     }
-
-    return true;
-}
-
-// Construct and HTTP-date as an rfc1123-date
-std::string http_server::http_date()
-{
-    std::stringstream date_builder;
-
-    boost::local_time::local_date_time t(boost::local_time::local_sec_clock::local_time(boost::local_time::time_zone_ptr()));
-    boost::local_time::local_time_facet* lf(new boost::local_time::local_time_facet("%a, %d %b %Y %H:%M:%S GMT"));
-    date_builder.imbue(std::locale(date_builder.getloc(), lf));
-    date_builder << t;
-
-    return date_builder.str();
-}
-
-std::string http_server::extract_host(http_request& request)
-{
-    std::string host = request.request_header["Host"];
-
-    // Check if the Request-URI is an absoluteURI of the following form:
-    // "http:" "//" host [ ":" port ] [ abs_path [ "?" query ]]
-    static std::regex absolute_uri_regex("http:\\/\\/([^\\/:]+)(:([0-9]+))?([^\\?]*)(\\?(.*))?", std::regex_constants::ECMAScript | std::regex_constants::optimize);
-    static std::regex absolute_path_regex("(\\/([^\\?]*))(\\?(.*))?", std::regex_constants::ECMAScript | std::regex_constants::optimize);
-
-    std::smatch matches;
-    if (std::regex_match(request.request_uri, matches, absolute_uri_regex)) {
-
-        // In this case, RFC2616:5.2 says to ignore any host header.
-        // We rewrite it in the request_header field.
-
-        const std::string raw_host = matches[1];
-        const std::string raw_port = matches[3];
-        const std::string raw_abs_path = matches[4];
-        const std::string raw_query = matches[6];
-
-        logger::trace() << "Absolute URI detected: " << logger::endl;
-        logger::trace() << " - Host: " << raw_host << "(" << raw_port << ")" << logger::endl;
-        logger::trace() << " - Abs_path: " << raw_abs_path << logger::endl;
-        logger::trace() << " - Query: " << raw_query << logger::endl;
-
-        request.request_header["Host"] = raw_host;
-        return raw_host;
-    }
-
-    if (std::regex_match(request.request_uri, matches, absolute_path_regex)) {
-        const std::string raw_abs_path = matches[1];
-        const std::string raw_query = matches[4];
-
-        logger::trace() << "Absolute path detected: " << logger::endl;
-        logger::trace() << " - Abs_path: " << raw_abs_path << logger::endl;
-        logger::trace() << " - Query: " << raw_query << logger::endl;
-
-        return request.request_header["Host"];
-    }
-
-    if (request.request_uri == "*") {
-        // Nothing to do.
-        return "*";
-    }
-
-    // TODO: Handle 'authority'-based request.
-
-    logger::warn() << "Invalid Request-URI: " << request.request_uri << logger::endl;
-    throw std::invalid_argument("Invalid Request-URI parameter in the request, could not detect a valid format.");
-}
-
-const virtual_website& http_server::find_website(uint16_t port, http_request& request) const
-{
-    auto iter = std::find_if(std::cbegin(websites), std::cend(websites),
-                             [&port](const virtual_website& w) { return w.port == port; });
-    return *iter;
 }

@@ -4,6 +4,7 @@
 #include <array>
 #include <cstdint>
 #include <iostream>
+#include <mutex>
 #include <string>
 
 // TODO: Use logging library...
@@ -94,6 +95,8 @@ private:
     static constexpr auto DEFAULT_COLOR = windows_console_color::dark_white;
     static type level;
     static bool wire_logging;
+
+    //static std::mutex multithreading_mutex;
 };
 
 template <typename CharT, typename Traits>
@@ -151,8 +154,8 @@ template <typename CharT, typename Traits>
 std::basic_ostream<CharT, Traits>& basic_logger<CharT, Traits>::log(type t)
 {
     std::basic_ostream<CharT, Traits>& os = get_stream(t);
-
     HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+    //basic_logger<CharT, Traits>::multithreading_mutex.lock();
     SetConsoleTextAttribute(hConsole, TYPE_COLOR[static_cast<uint8_t>(t)]);
     os << t << " ";
     SetConsoleTextAttribute(hConsole, MESSAGE_COLOR[static_cast<uint8_t>(t)]);
@@ -208,7 +211,9 @@ std::basic_ostream<CharT, Traits>& basic_logger<CharT, Traits>::endl(std::basic_
 {
     HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
     SetConsoleTextAttribute(hConsole, basic_logger<CharT, Traits>::DEFAULT_COLOR);
-    return os << std::endl;
+    os << std::endl;
+    //basic_logger<CharT, Traits>::multithreading_mutex.unlock();
+    return os;
 }
 
 #endif
