@@ -107,6 +107,7 @@ add_executable(http
     src/zmq_utility.hpp
     src/logger.hpp
     src/logger.cpp
+    src/runnable.h
 )
 
 if(${libmagic_FOUND})

@@ -19,7 +19,9 @@ apt:
     - libtool
     - autoconf
     - automake
-    - libzmq-dev
+    - libzmq3-dev
+    - build-essential
+    - pkg-config
 
 install:
   ############################################################################
@@ -43,14 +45,15 @@ install:
   ############################################################################
   # Install zeroMQ
   ############################################################################
-  - |
-    if [[ "${TRAVIS_OS_NAME}" == "linux" ]]; then
-      ZMQ_URL="http://download.zeromq.org/zeromq-4.1.4.tar.gz"
-      mkdir zmq && travis_retry wget --no-check-certificate --quiet -O - ${ZMQ_URL} | tar --strip-components=1 -xz -C zmq
-      cd zmq && ./autogen.sh ./configure && make
-      export PATH=${DEPS_DIR}/zmq/bin:${PATH}
-      export ZMQ_ROOT=${DEPS_DIR}/zmq
-    fi
+  #  - |
+  #    if [[ "${TRAVIS_OS_NAME}" == "linux" ]]; then
+  #      ZMQ_URL="http://download.zeromq.org/zeromq-4.1.4.tar.gz"
+  #      mkdir zmq && travis_retry wget --no-check-certificate --quiet -O - ${ZMQ_URL} | tar --strip-components=1 -xz -C zmq
+  #      cd zmq && ./autogen.sh ./configure && make
+  #      make install && ldconfig
+  #      export PATH=${DEPS_DIR}/zmq/bin:${PATH}
+  #      export ZMQ_ROOT=${DEPS_DIR}/zmq
+  #    fi
 
 before_script:
   ############################################################################

@@ -115,13 +115,9 @@ void http_server::run()
         logger::error() << "Server error, proxy failed due to the following zmq exception: " << logger::endl;
         logger::error() << "Error " << zmq_errno() << ": " << e.what() << logger::endl;
         throw e;
-    } catch (std::exception& e) {
-        logger::error() << "Server error, proxy failed due to the following exception: " << logger::endl;
-        logger::error() << e.what() << logger::endl;
-        throw e;
     }
 
-    logger::info() << "Shutting down server..." << logger::endl;
+    logger::debug() << "Shutting down server..." << logger::endl;
 
     const std::string quit = "QUIT";
     zmq::message_t quit_message(quit.c_str(), quit.size());
@@ -129,6 +125,8 @@ void http_server::run()
     for (auto& worker : workers) {
         worker.stop();
     }
+
+    logger::info() << "Server shut down." << logger::endl;
 }
 
 void http_server::forward_as_req(zmq::socket_t& from, zmq::socket_t& to)
