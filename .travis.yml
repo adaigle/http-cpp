@@ -19,7 +19,6 @@ apt:
     - libtool
     - autoconf
     - automake
-    - libzmq5-dev
     - build-essential
     - pkg-config
 
