@@ -23,6 +23,8 @@ public:
     void run();
 
 private:
+    static void forward_as_req(zmq::socket_t& from, zmq::socket_t& to);
+    static void forward_as_stream(zmq::socket_t& from, zmq::socket_t& to);
 
     struct socket_info;
 

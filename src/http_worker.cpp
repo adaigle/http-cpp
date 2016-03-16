@@ -47,23 +47,23 @@ void http_worker::run()
         zmq::pollitem_t{static_cast<void*>(inproc_request_socket), 0, ZMQ_POLLIN, 0}
     };
 
-    while (running) {
-        try {
-            zmq::poll(poll_items, -1);
+    try {
+        while (running) {
+                zmq::poll(poll_items, -1);
 
-            // Handle status message in priority
-            if (poll_items[0].revents & ZMQ_POLLIN) {
-                handle_status(inproc_status_socket);
-            }
-            // Handle status message in priority
-            if (poll_items[1].revents & ZMQ_POLLIN) {
-                handle_request(inproc_request_socket);
-            }
-        } catch (std::exception& e) {
-            logger::error() << "Exception caught in worker thread #" << worker_id << ":" << logger::endl;
-            logger::error() << e.what() << logger::endl;
-            throw e;
+                // Handle status message in priority
+                if (poll_items[0].revents & ZMQ_POLLIN) {
+                    handle_status(inproc_status_socket);
+                }
+                // Handle status message in priority
+                if (poll_items[1].revents & ZMQ_POLLIN) {
+                    handle_request(inproc_request_socket);
+                }
         }
+    } catch (std::exception& e) {
+        logger::error() << "Exception caught in worker thread #" << worker_id << ":" << logger::endl;
+        logger::error() << e.what() << logger::endl;
+        throw e;
     }
 
     logger::info() << "Worker #" << worker_id << " shut down." << logger::endl;
@@ -88,26 +88,29 @@ void http_worker::handle_status(zmq::socket_t& socket)
 
 void http_worker::handle_request(zmq::socket_t& socket)
 {
-    logger::debug() << "Worker #" << worker_id << ": receiving request..." << logger::endl;
     identity_t id;
     id.length = socket.recv(&id.identity, id.identity.size());
 
     // Construct a transaction for the request.
     http_transaction_t transaction(std::move(id));
-    logger::trace() << "Transaction initiated with id '" << transaction.id << "'." << logger::endl;
+    logger::debug() << "Worker #" << worker_id << ": processing transaction '" << transaction.id << "'." << logger::endl;
     try {
+        ///////////////////////////////////////////////////
+        // 1. Extract the request from the inproc messaging queue.
 
-        if (!extract_request(socket, transaction.request))
-            return; // Ignore the current request if the receiving fails...
+        if (!extract_request(socket, transaction.request)) {
+            // Ignore the current request if the receiving fails...
+            transaction.response.status_code = 400;
+        } else {
 
-        // Find the website to assign the request to...
+            ///////////////////////////////////////////////////
+            // 2. Detect the website based on the host/port of the requets-URI.
 
-        // Create response.
-        transaction.response.http_version = transaction.request.http_version;
-
-        {
             const std::string host = extract_host(transaction.request);
             const virtual_website& website = find_website(8081, transaction.request);
+
+            ///////////////////////////////////////////////////
+            // 3. Load the appropriate ressource from the website.
 
             const auto& host_it = transaction.request.request_header.find("Host");
             const auto& header_end = transaction.request.request_header.cend();
@@ -125,22 +128,15 @@ void http_worker::handle_request(zmq::socket_t& socket)
         transaction.response.status_code = 500;
     }
 
+    ///////////////////////////////////////////////////
+    // 4. Construct the response and complete the request.
+
+    transaction.response.http_version = transaction.request.http_version;
     transaction.response.response_header["Server"] = "http-cpp v0.1";
     transaction.response.general_header["Date"] = http_date();
 
     if (!send_response(socket, transaction))
         return; // Ignore the current request if the receiving fails...
-    ///////////////////////////////////////////////////
-    // 1. Extract the request from the inproc messaging queue.
-
-    ///////////////////////////////////////////////////
-    // 2. Detect the website based on the host/port of the requets-URI.
-
-    ///////////////////////////////////////////////////
-    // 3. Load the appropriate ressource from the website.
-
-    ///////////////////////////////////////////////////
-    // 4. Construct the response and complete the request.
 }
 
 
@@ -181,12 +177,7 @@ bool http_worker::send_response(zmq::socket_t& socket, http_transaction_t& t)
 
     socket.send(&t.id.identity, t.id.length, ZMQ_SNDMORE);
     zmq::message_t wire_response(response.c_str(), response.size());
-    socket.send(wire_response, ZMQ_SNDMORE);
-
-    // Close the connection with an empty response.
-    socket.send(&t.id.identity, t.id.length, ZMQ_SNDMORE);
-    socket.send(nullptr, 0, ZMQ_SNDMORE);
-    // Keep using ZMQ_SNDMORE to let another client connects.
+    socket.send(wire_response);
 
     const uint8_t first_digit = t.response.status_code / 100;
     logger::type response_type;

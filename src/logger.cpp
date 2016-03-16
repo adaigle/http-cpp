@@ -5,6 +5,3 @@ const std::array<std::basic_string<char>, 6> basic_logger<char>::MESSAGE_TYPE_ST
 
 template <>
 const std::array<std::basic_string<wchar_t>, 6> basic_logger<wchar_t>::MESSAGE_TYPE_STRING = {L"TRACE", L"DEBUG", L"INFO", L"INFO", L"WARN", L"ERROR"};
-
-//template <>
-//std::mutex basic_logger<char>::multithreading_mutex;

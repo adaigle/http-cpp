@@ -13,10 +13,6 @@
 
 class http_worker : public class_thread
 {
-    static constexpr size_t IDENTITY_CAPACITY = 5;
-    using identity_t = zmq_identity<IDENTITY_CAPACITY>;
-    using http_transaction_t = http_transaction<IDENTITY_CAPACITY>;
-
 public:
     http_worker(zmq::context_t&, size_t, const std::set<virtual_website>&);
 

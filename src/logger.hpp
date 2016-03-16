@@ -95,8 +95,6 @@ private:
     static constexpr auto DEFAULT_COLOR = windows_console_color::dark_white;
     static type level;
     static bool wire_logging;
-
-    //static std::mutex multithreading_mutex;
 };
 
 template <typename CharT, typename Traits>
@@ -110,6 +108,8 @@ template <typename CharT, typename Traits>
 typename basic_logger<CharT, Traits>::type basic_logger<CharT, Traits>::level = basic_logger<CharT, Traits>::type::trace;
 template <typename CharT, typename Traits>
 bool basic_logger<CharT, Traits>::wire_logging = false;
+
+static std::mutex multithreading_mutex;
 
 using logger = basic_logger<char>;
 
@@ -155,7 +155,7 @@ std::basic_ostream<CharT, Traits>& basic_logger<CharT, Traits>::log(type t)
 {
     std::basic_ostream<CharT, Traits>& os = get_stream(t);
     HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-    //basic_logger<CharT, Traits>::multithreading_mutex.lock();
+    multithreading_mutex.lock();
     SetConsoleTextAttribute(hConsole, TYPE_COLOR[static_cast<uint8_t>(t)]);
     os << t << " ";
     SetConsoleTextAttribute(hConsole, MESSAGE_COLOR[static_cast<uint8_t>(t)]);
@@ -168,6 +168,10 @@ std::basic_ostream<CharT, Traits>& basic_logger<CharT, Traits>::wire()
     static null_buffer<CharT, Traits> null_buffer;
     static std::basic_ostream<CharT, Traits> null_stream(&null_buffer);
     std::basic_ostream<CharT, Traits>& os = wire_logging ? std::cout : null_stream;
+
+    if (wire_logging) {
+        multithreading_mutex.lock();
+    }
 
     HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
     SetConsoleTextAttribute(hConsole, windows_console_color::dark_white);
@@ -195,6 +199,12 @@ std::basic_ostream<CharT, Traits>& basic_logger<CharT, Traits>::info()
 }
 
 template <typename CharT, typename Traits>
+std::basic_ostream<CharT, Traits>& basic_logger<CharT, Traits>::done()
+{
+    return log(type::info_green);
+}
+
+template <typename CharT, typename Traits>
 std::basic_ostream<CharT, Traits>& basic_logger<CharT, Traits>::warn()
 {
     return log(type::warning);
@@ -212,7 +222,7 @@ std::basic_ostream<CharT, Traits>& basic_logger<CharT, Traits>::endl(std::basic_
     HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
     SetConsoleTextAttribute(hConsole, basic_logger<CharT, Traits>::DEFAULT_COLOR);
     os << std::endl;
-    //basic_logger<CharT, Traits>::multithreading_mutex.unlock();
+    multithreading_mutex.unlock();
     return os;
 }
 

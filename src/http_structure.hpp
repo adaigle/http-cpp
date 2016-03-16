@@ -119,6 +119,14 @@ struct http_transaction
     http_response   response;
 };
 
+
+///////////////////////////////////////////////////////////
+// Typedefs of the identity
+
+static constexpr size_t IDENTITY_CAPACITY = 256;
+using identity_t = zmq_identity<IDENTITY_CAPACITY>;
+using http_transaction_t = http_transaction<IDENTITY_CAPACITY>;
+
 template <typename CharT, typename Traits>
 std::basic_ostream<CharT, Traits>& operator<< (std::basic_ostream<CharT, Traits>& stream, const http_response& response)
 {

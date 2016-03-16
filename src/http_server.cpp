@@ -16,12 +16,13 @@
 #include <boost/filesystem.hpp>
 
 #include "logger.hpp"
+#include "http_structure.hpp"
 
 using namespace std::chrono_literals;
 
 http_server::http_server(uint8_t io_threads) :
     context(io_threads), http_socket(context, zmq::socket_type::stream),
-    inproc_status_socket(context, zmq::socket_type::pub), inproc_request_socket(context, zmq::socket_type::router)
+    inproc_status_socket(context, zmq::socket_type::pub), inproc_request_socket(context, zmq::socket_type::dealer)
 {
     try {
         inproc_status_socket.bind("inproc://http_workers_status");
@@ -69,8 +70,6 @@ void http_server::connect(uint16_t port, const std::string& website_root, const 
 
 void http_server::run()
 {
-    // http://blog.fanout.io/2014/02/18/fun-with-zurl-the-http-websocket-client-daemon/
-
     // Launch the worker threads...
     logger::debug() << "Launching worker thread..." << logger::endl;
     for (size_t i = 0; i < 4; ++i) {
@@ -78,17 +77,44 @@ void http_server::run()
         workers.front().start();
     }
 
-    std::this_thread::sleep_for(500ms);
-
     logger::debug() << "Sending start signal..." << logger::endl;
     const std::string start = "START";
     zmq::message_t start_message(start.c_str(), start.size());
     inproc_status_socket.send(start_message);
 
-    logger::info() << "Server ready." << logger::endl;
+    std::this_thread::sleep_for(500ms);
+
+    logger::done() << "Server ready." << logger::endl;
+
+    // zmq_proxy doesn't work for stream sockets (identity is not sent along with the message to the same service).
+    // We do the polling loop manually...
+
+    //  Initialize poll set
+    std::vector<zmq::pollitem_t> poll_items = {
+        zmq::pollitem_t{static_cast<void*>(http_socket), 0, ZMQ_POLLIN, 0},
+        zmq::pollitem_t{static_cast<void*>(inproc_request_socket),  0, ZMQ_POLLIN, 0}
+    };
 
     try {
-        zmq::proxy(static_cast<void*>(http_socket), static_cast<void*>(inproc_request_socket), nullptr);
+        while (true) {
+            zmq::poll(poll_items, -1);
+
+            if (poll_items[0].revents & ZMQ_POLLIN) {
+                ///////////////////////////////////////////////
+                // Forward incoming HTTP request to a worker.
+                forward_as_req(http_socket, inproc_request_socket);
+            }
+
+            if (poll_items[1].revents & ZMQ_POLLIN) {
+                ///////////////////////////////////////////////
+                // Forward the HTTP response back to the client.
+                forward_as_stream(inproc_request_socket, http_socket);
+            }
+        }
+    } catch (zmq::error_t& e) {
+        logger::error() << "Server error, proxy failed due to the following zmq exception: " << logger::endl;
+        logger::error() << "Error " << zmq_errno() << ": " << e.what() << logger::endl;
+        throw e;
     } catch (std::exception& e) {
         logger::error() << "Server error, proxy failed due to the following exception: " << logger::endl;
         logger::error() << e.what() << logger::endl;
@@ -102,5 +128,64 @@ void http_server::run()
     inproc_status_socket.send(quit_message);
     for (auto& worker : workers) {
         worker.stop();
+    }
+}
+
+void http_server::forward_as_req(zmq::socket_t& from, zmq::socket_t& to)
+{
+    // 1. Extract the identity frame of the stream socket.
+    identity_t id;
+    id.length = from.recv(&id.identity, id.identity.size());
+
+    // 2. Extract the full message.
+    int more;
+    std::string frame;
+    do {
+        // Forward every part of the message
+        zmq::message_t part;
+        from.recv(&part);
+
+        frame.append(static_cast<char*>(part.data()), part.size());
+
+        size_t more_size = sizeof(more);
+        from.getsockopt(ZMQ_RCVMORE, &more, &more_size);
+    } while (more);
+
+    // 3. Send message if it's not empty...
+    if (!frame.empty()) {
+        to.send(&id.identity, id.length, ZMQ_SNDMORE);
+        zmq::message_t wire_response(frame.c_str(), frame.size());
+        to.send(wire_response);
+    }
+}
+
+void http_server::forward_as_stream(zmq::socket_t& from, zmq::socket_t& to)
+{
+    // 1. Extract the identity frame of the stream socket.
+    identity_t id;
+    id.length = from.recv(&id.identity, id.identity.size());
+
+    // 2. Extract the full message.
+    int more;
+    std::string frame;
+    do {
+        // Forward every part of the message
+        zmq::message_t part;
+        from.recv(&part);
+
+        frame.append(static_cast<char*>(part.data()), part.size());
+
+        size_t more_size = sizeof(more);
+        from.getsockopt(ZMQ_RCVMORE, &more, &more_size);
+    } while (more);
+
+    // 3. Send message if it's not empty...
+    if (!frame.empty()) {
+        to.send(&id.identity, id.length, ZMQ_SNDMORE);
+        zmq::message_t wire_response(frame.c_str(), frame.size());
+        to.send(wire_response, ZMQ_SNDMORE);
+
+        to.send(&id.identity, id.length, ZMQ_SNDMORE);
+        to.send(nullptr, 0, ZMQ_SNDMORE);
     }
 }
