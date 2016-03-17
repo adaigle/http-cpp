@@ -1,11 +1,11 @@
 # Notes on zeroMQ
 
 A quick reference to zeroMQ'as sockets types.
-* [REQ/REP](#routing-envelope-for-REQ/REP)
-* [ROUTER](#routing-envelope-for-ROUTER)
-* [DEALER](#routing-envelope-for-DEALER)
-* [PUB/SUB](#routing-envelope-for-PUB/SUB)
-* [PUSH/PULL](#routing-envelope-for-PUSH/PULL)
+* [REQ/REP](#routing-envelope-for-reqrep)
+* [ROUTER](#routing-envelope-for-router)
+* [DEALER](#routing-envelope-for-dealer)
+* [PUB/SUB](#routing-envelope-for-pubsub)
+* [PUSH/PULL](#routing-envelope-for-pushpull)
 
 For the envelope frame, we use `n` as the lenght of the content of each frame.
 

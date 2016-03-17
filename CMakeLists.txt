@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
-project(http VERSION 0.1 LANGUAGES CXX)
+project(http-cpp VERSION 0.1 LANGUAGES CXX)
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
@@ -18,22 +18,9 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 ##############################################################################
 
 ###########################################################
-# Include zeroMQ
-find_package(ZMQ REQUIRED)
-if(${ZMQ_FOUND})
-    add_library(zmq STATIC IMPORTED)
-    set_property(TARGET zmq PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${ZMQ_INCLUDE_DIRS})
-    set_property(TARGET zmq PROPERTY IMPORTED_LOCATION ${ZMQ_LIBRARIES})
-endif()
-
-###########################################################
-# Include cppzmq
-add_library(zmqcpp INTERFACE IMPORTED)
-set_property(TARGET zmqcpp PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/ext/cppzmq")
-
-###########################################################
 # Include libmagic
 set(libmagic_ROOT_DIR $ENV{libmagic_ROOT})
+message(STATUS ${libmagic_ROOT_DIR})
 find_package(libmagic)
 if (${libmagic_FOUND})
     add_library(libmagic SHARED IMPORTED)
@@ -48,6 +35,20 @@ endif()
 if(NOT ${libmagic_FOUND})
     message(WARNING "libmagic could NOT be found, content-type detection will be disabled.")
 endif()
+
+###########################################################
+# Include zeroMQ
+find_package(ZMQ REQUIRED)
+if(${ZMQ_FOUND})
+    add_library(zmq STATIC IMPORTED)
+    set_property(TARGET zmq PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${ZMQ_INCLUDE_DIRS})
+    set_property(TARGET zmq PROPERTY IMPORTED_LOCATION ${ZMQ_LIBRARIES})
+endif()
+
+###########################################################
+# Include cppzmq
+add_library(zmqcpp INTERFACE IMPORTED)
+set_property(TARGET zmqcpp PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/ext/cppzmq")
 
 ###########################################################
 # Include boost
@@ -90,10 +91,26 @@ if (WIN32 AND CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 ##############################################################################
+# Setup tests
+##############################################################################
+enable_testing()
+add_custom_target(check
+    COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    COMMENT "Build and then run all the tests and examples."
+)
+
+##############################################################################
+# Prepare subdirectories
+##############################################################################
+
+add_subdirectory(libhttp-cpp)
+
+##############################################################################
 # Create executable
 ##############################################################################
 
-add_executable(http
+add_executable(http-cpp
     src/main.cpp
     src/http_server.h
     src/http_server.cpp
@@ -111,14 +128,14 @@ add_executable(http
 )
 
 if(${libmagic_FOUND})
-    set_property(TARGET http APPEND PROPERTY COMPILE_DEFINITIONS HAVE_LIBMAGIC)
-    set_property(TARGET http APPEND PROPERTY COMPILE_DEFINITIONS "LIBMAGIC_MAGIC_FILE=\"${libmagic_MAGIC_FILE}\"")
+    set_property(TARGET http-cpp APPEND PROPERTY COMPILE_DEFINITIONS HAVE_LIBMAGIC)
+    set_property(TARGET http-cpp APPEND PROPERTY COMPILE_DEFINITIONS "LIBMAGIC_MAGIC_FILE=\"${libmagic_MAGIC_FILE}\"")
 endif()
 
 # Compiler requirement for the library.
-set_target_properties(http PROPERTIES CXX_STANDARD 14)
+set_target_properties(http-cpp PROPERTIES CXX_STANDARD 14)
 
-target_link_libraries(http
+target_link_libraries(http-cpp
     boost
     boost-system
     boost-filesystem
@@ -126,31 +143,33 @@ target_link_libraries(http
     zmq
     zmqcpp
     libmagic
+    libhttp-cpp
     ${THREADING_LIBRARY}
     ${STANDARD_LIBRARY}
 )
 
 if (WIN32)
-    set_property(TARGET http APPEND PROPERTY COMPILE_DEFINITIONS BOOST_USE_WINDOWS_H)
+    set_property(TARGET http-cpp APPEND PROPERTY COMPILE_DEFINITIONS BOOST_USE_WINDOWS_H)
 endif()
 
 ##############################################################################
 # Post build commands
 ##############################################################################
 
-add_custom_command(TARGET http POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${ZMQ_LIBRARIES} $<TARGET_FILE_DIR:http>
+add_custom_command(TARGET http-cpp POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${ZMQ_LIBRARIES} $<TARGET_FILE_DIR:http-cpp>
 )
 
+
 if(${libmagic_FOUND})
-    add_custom_command(TARGET http POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${libmagic_LIBRARIES} $<TARGET_FILE_DIR:http>
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${libmagic_MAGIC_DB}" "$<TARGET_FILE_DIR:http>/${libmagic_MAGIC_FILE}"
+    add_custom_command(TARGET http-cpp POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${libmagic_LIBRARIES} $<TARGET_FILE_DIR:http-cpp>
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${libmagic_MAGIC_DB}" "$<TARGET_FILE_DIR:http-cpp>/${libmagic_MAGIC_FILE}"
     )
 
     foreach(dependency ${libmagic_DEPENDENCIES})
-        add_custom_command(TARGET http POST_BUILD
-          COMMAND ${CMAKE_COMMAND} -E copy_if_different ${dependency} $<TARGET_FILE_DIR:http>
+        add_custom_command(TARGET http-cpp POST_BUILD
+          COMMAND ${CMAKE_COMMAND} -E copy_if_different ${dependency} $<TARGET_FILE_DIR:http-cpp>
       )
     endforeach(dependency)
 endif()
