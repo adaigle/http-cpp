@@ -115,7 +115,7 @@ void http_worker::handle_request(zmq::socket_t& socket)
 
         ///////////////////////////////////////////////////
         // 2. Detect the website based on the host/port of the requets-URI.
-        http_request request = http_service::parse_request(frame);
+        const http_request request = http_service::parse_request(frame);
         const http_website& website = find_website(8081, request);
 
         ///////////////////////////////////////////////////
@@ -153,7 +153,7 @@ void http_worker::handle_request(zmq::socket_t& socket)
     }
 }
 
-const http_website& http_worker::find_website(uint16_t port, http_request& request) const
+const http_website& http_worker::find_website(uint16_t port, const http_request& request) const
 {
     auto iter = std::find_if(std::cbegin(websites_), std::cend(websites_),
                              [&port](const http_website& w) { return w.port_ == port; });

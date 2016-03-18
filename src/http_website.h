@@ -13,7 +13,7 @@ public:
     http_website(uint16_t port, const std::string& root, const std::string& name = "") noexcept;
     ~http_website();
 
-    http_response execute(http_request& request) const;
+    http_response execute(const http_request& request) const;
 
     bool operator==(const http_website& other) const;
     bool operator<(const http_website& other) const;

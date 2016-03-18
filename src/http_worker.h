@@ -21,7 +21,7 @@ private:
     void handle_status(zmq::socket_t&);
     void handle_request(zmq::socket_t&);
 
-    const http_website& find_website(uint16_t port, http_request&) const;
+    const http_website& find_website(uint16_t port, const http_request&) const;
 
     zmq::context_t& main_context_;
 

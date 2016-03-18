@@ -16,7 +16,7 @@ http_website::~http_website()
 {
 }
 
-http_response http_website::execute(http_request& request) const
+http_response http_website::execute(const http_request& request) const
 {
     return service_.execute(request);
 }

@@ -73,7 +73,7 @@ std::string http_service::execute(const std::string& request) const
     return response_stream.str();
 }
 
-http_response http_service::execute(http_request& request) const
+http_response http_service::execute(const http_request& request) const
 {
     http_response response;
     response.http_version = request.http_version;
@@ -117,9 +117,10 @@ std::string http_service::http_date()
     return date_builder.str();
 }
 
-std::string http_service::extract_host(http_request& request)
+std::string http_service::extract_host(const http_request& request)
 {
-    std::string host = request.request_header["Host"];
+    const auto host_it = request.request_header.find("Host");
+    std::string host = (host_it != request.request_header.cend()) ? host_it->second : "";
 
     // Check if the Request-URI is an absoluteURI of the following form:
     // "http:" "//" host [ ":" port ] [ abs_path [ "?" query ]]
@@ -142,7 +143,6 @@ std::string http_service::extract_host(http_request& request)
         logger::trace() << " - Abs_path: " << raw_abs_path << logger::endl;
         logger::trace() << " - Query: " << raw_query << logger::endl;
 
-        request.request_header["Host"] = raw_host;
         return raw_host;
     }
 
@@ -154,7 +154,7 @@ std::string http_service::extract_host(http_request& request)
         logger::trace() << " - Abs_path: " << raw_abs_path << logger::endl;
         logger::trace() << " - Query: " << raw_query << logger::endl;
 
-        return request.request_header["Host"];
+        return host;
     }
 
     if (request.request_uri == "*") {

@@ -42,11 +42,11 @@ public:
     ///
     /// \param request The http request.
     /// \returns The http response given as an object.
-    http_response execute(http_request& request) const;
+    http_response execute(const http_request& request) const;
 protected:
 
     static std::string http_date();
-    static std::string extract_host(http_request&);
+    static std::string extract_host(const http_request&);
 
 private:
     const std::string name_;
