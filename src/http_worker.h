@@ -6,15 +6,13 @@
 
 #include <zmq.hpp>
 
+#include "http_website.h"
 #include "runnable.h"
-
-#include "http_structure.hpp"
-#include "virtual_website.h"
 
 class http_worker : public class_thread
 {
 public:
-    http_worker(zmq::context_t&, size_t, const std::set<virtual_website>&);
+    http_worker(zmq::context_t&, size_t, const std::set<http_website>&);
 
 protected:
     void run();
@@ -23,17 +21,12 @@ private:
     void handle_status(zmq::socket_t&);
     void handle_request(zmq::socket_t&);
 
-    bool extract_request(zmq::socket_t&, http_request&);
-    bool send_response(zmq::socket_t&, http_transaction_t&);
+    const http_website& find_website(uint16_t port, http_request&) const;
 
-    static std::string http_date();
-    static std::string extract_host(http_request&);
-    const virtual_website& find_website(uint16_t port, http_request&) const;
+    zmq::context_t& main_context_;
 
-    zmq::context_t& main_context;
-
-    const std::atomic<size_t> worker_id;
-    const std::set<virtual_website>& websites;
+    const std::atomic<size_t> identifier_;
+    const std::set<http_website>& websites_;
 };
 
 #endif

@@ -8,8 +8,6 @@
 #include <sstream>
 #include <string>
 
-#include "zmq_utility.hpp"
-
 struct http_constants
 {
     enum class method : uint8_t {
@@ -70,7 +68,7 @@ struct http_request
     //   Host: www.w3.org
     ///////////////////////////////////////////////////////
 
-    parsing_status parse(std::string& frame);
+    parsing_status parse(const std::string& frame);
 
     http_constants::method method;
     std::string request_uri;
@@ -107,25 +105,6 @@ struct http_response
     header_map  entity_header;
     std::string message_body;
 };
-
-
-template <size_t N>
-struct http_transaction
-{
-    http_transaction(zmq_identity<N>&& id) noexcept : id(std::move(id)) {};
-
-    const zmq_identity<N> id;
-    http_request    request;
-    http_response   response;
-};
-
-
-///////////////////////////////////////////////////////////
-// Typedefs of the identity
-
-static constexpr size_t IDENTITY_CAPACITY = 256;
-using identity_t = zmq_identity<IDENTITY_CAPACITY>;
-using http_transaction_t = http_transaction<IDENTITY_CAPACITY>;
 
 template <typename CharT, typename Traits>
 std::basic_ostream<CharT, Traits>& operator<< (std::basic_ostream<CharT, Traits>& stream, const http_response& response)

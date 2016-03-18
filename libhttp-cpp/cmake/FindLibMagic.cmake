@@ -91,6 +91,7 @@ if (NOT libmagic_FOUND)
   ##____________________________________________________________________________
   ## Actions taken when all components have been found
 
+  include(FindPackageHandleStandardArgs)
   find_package_handle_standard_args (libmagic DEFAULT_MSG libmagic_LIBRARIES libmagic_INCLUDES)
 
   if (libmagic_FOUND)

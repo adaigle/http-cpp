@@ -9,6 +9,7 @@
 
 #include <zmq.hpp>
 
+#include "http_website.h"
 #include "http_worker.h"
 
 class http_server
@@ -28,13 +29,13 @@ private:
 
     struct socket_info;
 
-    zmq::context_t context;
-    zmq::socket_t http_socket;
-    zmq::socket_t inproc_status_socket;
-    zmq::socket_t inproc_request_socket;
+    zmq::context_t context_;
+    zmq::socket_t http_socket_;
+    zmq::socket_t inproc_status_socket_;
+    zmq::socket_t inproc_request_socket_;
 
-    std::set<virtual_website> websites;
-    std::forward_list<http_worker> workers;
+    std::set<http_website> websites_;
+    std::forward_list<http_worker> workers_;
 };
 
 

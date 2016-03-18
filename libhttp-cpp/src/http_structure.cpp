@@ -1,4 +1,4 @@
-#include "http_structure.hpp"
+#include "../include/http_structure.hpp"
 
 #include <algorithm>
 #include <ctype.h>
@@ -69,7 +69,7 @@ std::string http_constants::reason_phrase(uint16_t code)
 	}
 }
 
-http_request::parsing_status http_request::parse(std::string& frame)
+http_request::parsing_status http_request::parse(const std::string& frame)
 {
 	if (frame.empty())
 		return parsing_status::empty_request;

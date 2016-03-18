@@ -15,24 +15,25 @@
 
 #include <boost/filesystem.hpp>
 
-#include "logger.hpp"
 #include "http_structure.hpp"
+#include "identity.h"
+#include "logger.hpp"
 
 using namespace std::chrono_literals;
 
 http_server::http_server(uint8_t io_threads) :
-    context(io_threads), http_socket(context, zmq::socket_type::stream),
-    inproc_status_socket(context, zmq::socket_type::pub), inproc_request_socket(context, zmq::socket_type::dealer)
+    context_(io_threads), http_socket_(context_, zmq::socket_type::stream),
+    inproc_status_socket_(context_, zmq::socket_type::pub), inproc_request_socket_(context_, zmq::socket_type::dealer)
 {
     try {
-        inproc_status_socket.bind("inproc://http_workers_status");
+        inproc_status_socket_.bind("inproc://http_workers_status");
     } catch (std::exception& e) {
         logger::error() << "Server error, cannot bind the HTTP worker status channel: " << logger::endl;
         logger::error() << e.what() << logger::endl;
         throw e;
     }
     try {
-        inproc_request_socket.bind("inproc://http_workers_requests");
+        inproc_request_socket_.bind("inproc://http_workers_requests");
     } catch (std::exception& e) {
         logger::error() << "Server error, cannot bind the HTTP worker request channel: " << logger::endl;
         logger::error() << e.what() << logger::endl;
@@ -52,18 +53,23 @@ void http_server::connect(uint16_t port, const std::string& website_root, const 
     if (!boost::filesystem::is_directory(website_root))
         throw std::invalid_argument("Invalid website root directory. The directory must exist on the filesystem.");
 
-    const auto insert_iter = websites.emplace(port, website_root, website_name);
-    if (!insert_iter.second) {
-        throw std::invalid_argument("Invalid website identifier. Is the port and name combination already used ?");
-    }
-
     try {
-        // Executing the binding.
-        std::ostringstream address_builder;
-        address_builder << "tcp://*:" << port;
-        http_socket.bind(address_builder.str());
-    } catch (...) {
-        websites.erase(insert_iter.first);
+        const auto insert_iter = websites_.emplace(port, website_root, website_name);
+        if (!insert_iter.second) {
+            throw std::invalid_argument("Invalid website identifier. Is the port and name combination already used ?");
+        }
+
+        try {
+            // Executing the binding.
+            std::ostringstream address_builder;
+            address_builder << "tcp://*:" << port;
+            http_socket_.bind(address_builder.str());
+        } catch (std::exception& e) {
+            websites_.erase(insert_iter.first);
+            throw;
+        }
+    } catch (std::exception& e) {
+        logger::error() << e.what() << logger::endl;
         throw;
     }
 }
@@ -73,14 +79,14 @@ void http_server::run()
     // Launch the worker threads...
     logger::debug() << "Launching worker thread..." << logger::endl;
     for (size_t i = 0; i < 4; ++i) {
-        workers.emplace_front(context, i, websites);
-        workers.front().start();
+        workers_.emplace_front(context_, i, websites_);
+        workers_.front().start();
     }
 
     logger::debug() << "Sending start signal..." << logger::endl;
     const std::string start = "START";
     zmq::message_t start_message(start.c_str(), start.size());
-    inproc_status_socket.send(start_message);
+    inproc_status_socket_.send(start_message);
 
     std::this_thread::sleep_for(500ms);
 
@@ -91,8 +97,8 @@ void http_server::run()
 
     //  Initialize poll set
     std::vector<zmq::pollitem_t> poll_items = {
-        zmq::pollitem_t{static_cast<void*>(http_socket), 0, ZMQ_POLLIN, 0},
-        zmq::pollitem_t{static_cast<void*>(inproc_request_socket),  0, ZMQ_POLLIN, 0}
+        zmq::pollitem_t{static_cast<void*>(http_socket_), 0, ZMQ_POLLIN, 0},
+        zmq::pollitem_t{static_cast<void*>(inproc_request_socket_),  0, ZMQ_POLLIN, 0}
     };
 
     try {
@@ -102,13 +108,13 @@ void http_server::run()
             if (poll_items[0].revents & ZMQ_POLLIN) {
                 ///////////////////////////////////////////////
                 // Forward incoming HTTP request to a worker.
-                forward_as_req(http_socket, inproc_request_socket);
+                forward_as_req(http_socket_, inproc_request_socket_);
             }
 
             if (poll_items[1].revents & ZMQ_POLLIN) {
                 ///////////////////////////////////////////////
                 // Forward the HTTP response back to the client.
-                forward_as_stream(inproc_request_socket, http_socket);
+                forward_as_stream(inproc_request_socket_, http_socket_);
             }
         }
     } catch (zmq::error_t& e) {
@@ -121,8 +127,8 @@ void http_server::run()
 
     const std::string quit = "QUIT";
     zmq::message_t quit_message(quit.c_str(), quit.size());
-    inproc_status_socket.send(quit_message);
-    for (auto& worker : workers) {
+    inproc_status_socket_.send(quit_message);
+    for (auto& worker : workers_) {
         worker.stop();
     }
 

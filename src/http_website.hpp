@@ -1,7 +1,7 @@
-#ifndef VIRTUAL_WEBSITE_HPP
-#define VIRTUAL_WEBSITE_HPP
+#ifndef HTTP_WEBSITE_HPP
+#define HTTP_WEBSITE_HPP
 
-#include "virtual_website.h"
+#include "http_website.h"
 
 namespace std
 {
@@ -13,9 +13,9 @@ struct hash_combine
 };
 
 template <>
-struct hash<virtual_website>
+struct hash<http_website>
 {
-	size_t operator()(const virtual_website& x) const {
+	size_t operator()(const http_website& x) const {
 		return hash_combine<decltype(x.port), decltype(x.name)>()(x.port, x.name);
 	}
 };
