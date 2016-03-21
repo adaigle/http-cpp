@@ -17,7 +17,7 @@
 #endif
 
 http_service::http_service(const std::string& name, const std::string& path) :
-    name_(name), path_(path)
+    name_(name), path_(path), method_dispatch_(dispatch_construction())
 {
 #if defined(HAVE_LIBMAGIC)
     if (magic_handle_ == nullptr) {
@@ -81,17 +81,13 @@ http_response http_service::execute(const http_request& request) const
     const std::string host = extract_host(request);
     // TODO: Check that the host match the request.
 
-    std::string path = path_ + request.request_uri;
     try {
-        http_resource resource = http_resource::get_resource(path);
-        http_resource::info meta = resource.fetch_resource_info(magic_handle_);
-
-        if (request.method == http_constants::method::m_get) {
-            std::ostringstream resource_stream;
-            resource.fetch_resource_content(resource_stream);
-            response.message_body = resource_stream.str();
+        const auto it_func = method_dispatch_.find(request.method);
+        if (it_func == method_dispatch_.cend()) {
+            response.status_code = 501;
         }
-        response.status_code = 200;
+
+        (it_func->second)(this, request, response);
     } catch (std::exception& e) {
         // Resource cannot be loaded, send out a 404 response.
         response.status_code = 404;
@@ -103,6 +99,63 @@ http_response http_service::execute(const http_request& request) const
     return response;
 }
 
+void http_service::execute_options(const http_request& request, http_response& response) const
+{
+}
+
+void http_service::execute_get(const http_request& request, http_response& response) const
+{
+    std::string path = path_ + request.request_uri;
+    try {
+        http_resource resource = http_resource::get_resource(path);
+        http_resource::info meta = resource.fetch_resource_info(magic_handle_);
+
+        response.entity_header["Content-Type"] = meta.content_type;
+        response.entity_header["Content-Length"] = std::to_string(meta.content_length);
+
+        std::ostringstream resource_stream;
+        resource.fetch_resource_content(resource_stream);
+        response.message_body = resource_stream.str();
+
+        response.status_code = 200;
+    } catch (std::exception& e) {
+        // Resource cannot be loaded, send out a 404 response.
+        response.status_code = 404;
+    }
+}
+
+void http_service::execute_head(const http_request& request, http_response& response) const
+{
+    std::string path = path_ + request.request_uri;
+    try {
+        http_resource resource = http_resource::get_resource(path);
+        http_resource::info meta = resource.fetch_resource_info(magic_handle_);
+
+        response.entity_header["Content-Type"] = meta.content_type;
+        response.entity_header["Content-Length"] = meta.content_length;
+
+        response.status_code = 200;
+    } catch (std::exception& e) {
+        // Resource cannot be loaded, send out a 404 response.
+        response.status_code = 404;
+    }
+}
+
+void http_service::execute_post(const http_request& request, http_response& response) const
+{
+}
+
+void http_service::execute_put(const http_request& request, http_response& response) const
+{
+}
+
+void http_service::execute_delete(const http_request& request, http_response& response) const
+{
+}
+
+void http_service::execute_trace(const http_request& request, http_response& response) const
+{
+}
 
 // Construct and HTTP-date as an rfc1123-date
 std::string http_service::http_date()
@@ -166,4 +219,17 @@ std::string http_service::extract_host(const http_request& request)
 
     logger::warn() << "Invalid Request-URI: " << request.request_uri << logger::endl;
     throw std::invalid_argument("Invalid Request-URI parameter in the request, could not detect a valid format.");
+}
+
+http_service::exec_dispatch_t http_service::dispatch_construction()
+{
+    return {
+        {http_constants::method::m_options, &http_service::execute_options},
+        {http_constants::method::m_get    , &http_service::execute_get},
+        {http_constants::method::m_head   , &http_service::execute_head},
+        {http_constants::method::m_post   , &http_service::execute_post},
+        {http_constants::method::m_put    , &http_service::execute_put},
+        {http_constants::method::m_delete , &http_service::execute_delete},
+        {http_constants::method::m_trace  , &http_service::execute_trace}
+    };
 }

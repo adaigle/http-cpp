@@ -1,7 +1,10 @@
 #ifndef HTTP_SERVICE_H
 #define HTTP_SERVICE_H
 
+#include <functional>
 #include <string>
+#include <unordered_map>
+#include <type_traits>
 
 #include "http_structure.hpp"
 
@@ -11,6 +14,13 @@
 #  endif
 #  include "magic.h"
 #endif
+
+struct enum_hash {
+    template <typename T>
+	inline typename std::enable_if_t<std::is_enum<T>::value, std::size_t> operator()(const T& value) const {
+		return std::hash<typename std::underlying_type<T>::type>()(static_cast<typename std::underlying_type<T>::type>(value));
+	}
+};
 
 /// \brief Provide parsing and execution capacities of http request/response.
 ///
@@ -44,13 +54,26 @@ public:
     /// \returns The http response given as an object.
     http_response execute(const http_request& request) const;
 protected:
+    void execute_options(const http_request&, http_response&) const;
+    void execute_get(const http_request&, http_response&) const;
+    void execute_head(const http_request&, http_response&) const;
+    void execute_post(const http_request&, http_response&) const;
+    void execute_put(const http_request&, http_response&) const;
+    void execute_delete(const http_request&, http_response&) const;
+    void execute_trace(const http_request&, http_response&) const;
 
     static std::string http_date();
     static std::string extract_host(const http_request&);
 
 private:
+    using exec_dispatch_signature_t = void(const http_service* const, const http_request&, http_response&);
+    using exec_dispatch_t = std::unordered_map<http_constants::method, const std::function<exec_dispatch_signature_t>, enum_hash>;
+
+    exec_dispatch_t dispatch_construction();
+
     const std::string name_;
     std::string path_;
+    const exec_dispatch_t method_dispatch_;
 
 #if defined(HAVE_LIBMAGIC)
     static magic_t magic_handle_;
