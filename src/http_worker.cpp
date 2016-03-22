@@ -9,6 +9,8 @@
 
 #include <boost/date_time/local_time/local_time.hpp>
 
+#include "http_exception.h"
+
 #include "logger.hpp"
 #include "identity.h"
 
@@ -27,16 +29,16 @@ void http_worker::run()
         inproc_status_socket.connect("inproc://http_workers_status");
         // Subscribe on everything
         inproc_status_socket.setsockopt(ZMQ_SUBSCRIBE, "", 0);
-    } catch (std::exception& e) {
+    } catch (zmq::error_t& e) {
         logger::error() << "Server error, cannot connect the HTTP worker status channel: " << logger::endl;
-        logger::error() << e.what() << logger::endl;
+        logger::error() << "Error " << zmq_errno() << ": " << e.what() << logger::endl;
         throw e;
     }
     try {
         inproc_request_socket.connect("inproc://http_workers_requests");
-    } catch (std::exception& e) {
+    } catch (zmq::error_t& e) {
         logger::error() << "Server error, cannot connect the HTTP worker request channel: " << logger::endl;
-        logger::error() << e.what() << logger::endl;
+        logger::error() << "Error " << zmq_errno() << ": " << e.what() << logger::endl;
         throw e;
     }
 
@@ -48,23 +50,22 @@ void http_worker::run()
         zmq::pollitem_t{static_cast<void*>(inproc_request_socket), 0, ZMQ_POLLIN, 0}
     };
 
-    try {
-        while (running) {
-                zmq::poll(poll_items, -1);
+    while (running) {
+        try {
+            zmq::poll(poll_items, -1);
 
-                // Handle status message in priority
-                if (poll_items[0].revents & ZMQ_POLLIN) {
-                    handle_status(inproc_status_socket);
-                }
-                // Handle status message in priority
-                if (poll_items[1].revents & ZMQ_POLLIN) {
-                    handle_request(inproc_request_socket);
-                }
+            // Handle status message in priority
+            if (poll_items[0].revents & ZMQ_POLLIN) {
+                handle_status(inproc_status_socket);
+            }
+            // Handle status message in priority
+            if (poll_items[1].revents & ZMQ_POLLIN) {
+                handle_request(inproc_request_socket);
+            }
+        } catch (zmq::error_t& e) {
+            logger::error() << "Exception caught in worker thread #" << identifier_ << ":" << logger::endl;
+            logger::error() << "Error " << zmq_errno() << ": " << e.what() << logger::endl;
         }
-    } catch (std::exception& e) {
-        logger::error() << "Exception caught in worker thread #" << identifier_ << ":" << logger::endl;
-        logger::error() << e.what() << logger::endl;
-        throw e;
     }
 
     logger::info() << "Worker #" << identifier_ << " shut down." << logger::endl;
@@ -95,7 +96,7 @@ void http_worker::handle_request(zmq::socket_t& socket)
     // Construct a transaction for the request.
     logger::debug() << "Worker #" << identifier_ << ": processing transaction '" << id << "'." << logger::endl;
 
-    http_response response;
+    http_response response = http_response::create_response();
     try {
         ///////////////////////////////////////////////////
         // 1. Extract the request from the inproc messaging queue.
@@ -121,6 +122,8 @@ void http_worker::handle_request(zmq::socket_t& socket)
         ///////////////////////////////////////////////////
         // 3. Execute the http request.
         response = website.execute(request);
+    } catch(http_invalid_request& e) {
+        response.status_code = 400;
     } catch(...) {
         response.status_code = 500;
     }

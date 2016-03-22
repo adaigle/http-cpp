@@ -1,6 +1,8 @@
 #include "http_resource.hpp"
 
 #include <exception>
+#include <ios>
+#include <limits>
 
 #include <boost/filesystem.hpp>
 
@@ -27,8 +29,15 @@ http_resource::info http_resource::fetch_resource_info(LIBMAGIC_HANDLE_ARG magic
 {
     info meta_information;
 
-    stream_.seekg(std::ios_base::end);
-    meta_information.content_length = stream_.tellg();
+    // tellg might not return an offset in bytes...
+    // We use a more reliable method which reads/ignore everything.
+    stream_.ignore(std::numeric_limits<std::streamsize>::max());
+    std::streamsize length = stream_.gcount();
+    stream_.clear(); // Reset the eof flag set by ignore.
+    stream_.seekg(0, std::ios_base::beg);
+    assert(length > 0);
+    meta_information.content_length = static_cast<size_t>(length);
+
     meta_information.content_type = get_content_type(magic_handle);
 
     return meta_information;

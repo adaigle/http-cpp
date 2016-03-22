@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <type_traits>
 
+#include "http_service.hpp"
 #include "http_structure.hpp"
 
 #if defined(HAVE_LIBMAGIC)
@@ -15,18 +16,12 @@
 #  include "magic.h"
 #endif
 
-struct enum_hash {
-    template <typename T>
-	inline typename std::enable_if_t<std::is_enum<T>::value, std::size_t> operator()(const T& value) const {
-		return std::hash<typename std::underlying_type<T>::type>()(static_cast<typename std::underlying_type<T>::type>(value));
-	}
-};
-
 /// \brief Provide parsing and execution capacities of http request/response.
 ///
 class http_service
 {
 public:
+
     http_service(const std::string& name, const std::string& path);
     ~http_service();
 
@@ -62,12 +57,13 @@ protected:
     void execute_delete(const http_request&, http_response&) const;
     void execute_trace(const http_request&, http_response&) const;
 
-    static std::string http_date();
     static std::string extract_host(const http_request&);
 
 private:
+
     using exec_dispatch_signature_t = void(const http_service* const, const http_request&, http_response&);
-    using exec_dispatch_t = std::unordered_map<http_constants::method, const std::function<exec_dispatch_signature_t>, enum_hash>;
+    using exec_dispatch_t = std::unordered_map<execution_handler_identifier,
+                                               std::function<exec_dispatch_signature_t>>;
 
     exec_dispatch_t dispatch_construction();
 

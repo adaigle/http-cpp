@@ -7,6 +7,7 @@
 #include <tuple>
 
 #include <boost/algorithm/string.hpp>
+#include <boost/date_time/local_time/local_time.hpp>
 
 #include "logger.hpp"
 
@@ -67,6 +68,19 @@ std::string http_constants::reason_phrase(uint16_t code)
 		case 505: return "HTTP Version not supported";
 		default: throw std::invalid_argument("The HTTP status code provided is invalid.");
 	}
+}
+
+// Construct and HTTP-date as an rfc1123-date
+std::string http_constants::http_date()
+{
+    std::stringstream date_builder;
+
+    boost::local_time::local_date_time t(boost::local_time::local_sec_clock::local_time(boost::local_time::time_zone_ptr()));
+    boost::local_time::local_time_facet* lf(new boost::local_time::local_time_facet("%a, %d %b %Y %H:%M:%S GMT"));
+    date_builder.imbue(std::locale(date_builder.getloc(), lf));
+    date_builder << t;
+
+    return date_builder.str();
 }
 
 http_request::parsing_status http_request::parse(const std::string& frame)
@@ -154,4 +168,17 @@ http_request::parsing_status http_request::parse(const std::string& frame)
 		logger::wire() << h.first << ":" << h.second << logger::endl;
 
 	return parsing_status::success;
+}
+
+http_response http_response::create_response()
+{
+	http_response response;
+
+	// Default HTTP version, potentially overwritten on request.
+	response.http_version = "HTTP/1.1";
+
+    response.response_header["Server"] = "http-cpp v0.1";
+    response.general_header["Date"] = http_constants::http_date();
+
+	return response;
 }

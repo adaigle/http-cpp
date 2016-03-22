@@ -27,16 +27,16 @@ http_server::http_server(uint8_t io_threads) :
 {
     try {
         inproc_status_socket_.bind("inproc://http_workers_status");
-    } catch (std::exception& e) {
+    } catch (zmq::error_t& e) {
         logger::error() << "Server error, cannot bind the HTTP worker status channel: " << logger::endl;
-        logger::error() << e.what() << logger::endl;
+        logger::error() << "Error " << zmq_errno() << ": " << e.what() << logger::endl;
         throw e;
     }
     try {
         inproc_request_socket_.bind("inproc://http_workers_requests");
-    } catch (std::exception& e) {
+    } catch (zmq::error_t& e) {
         logger::error() << "Server error, cannot bind the HTTP worker request channel: " << logger::endl;
-        logger::error() << e.what() << logger::endl;
+        logger::error() << "Error " << zmq_errno() << ": " << e.what() << logger::endl;
         throw e;
     }
 }
@@ -46,8 +46,6 @@ void http_server::connect(uint16_t port, const std::string& website_root, const 
     logger::trace() << "Connecting to port " << port << " for website '" << website_name << "'..." << logger::endl;
 
     // TODO: Check if the port is already used.
-    //if (find_it != http_sockets.cend())
-    //    throw std::invalid_argument("The binding of the socket was unsuccessful. Did you register two websites under the same port ?");
 
     // Check if the website directory exists.
     if (!boost::filesystem::is_directory(website_root))
@@ -68,8 +66,9 @@ void http_server::connect(uint16_t port, const std::string& website_root, const 
             websites_.erase(insert_iter.first);
             throw;
         }
-    } catch (std::exception& e) {
-        logger::error() << e.what() << logger::endl;
+    } catch (zmq::error_t& e) {
+        logger::error() << "Server error, cannot connect to website '" << website_name << "' on port " << port << "." << logger::endl;
+        logger::error() << "Error " << zmq_errno() << ": " << e.what() << logger::endl;
         throw;
     }
 }

@@ -1,13 +1,13 @@
-#include "../include/http_service.h"
+#include "http_service.h"
 
 #include <exception>
 #include <regex>
 #include <sstream>
 #include <string>
 
-#include <boost/date_time/local_time/local_time.hpp>
 #include <boost/filesystem.hpp>
 
+#include "http_exception.h"
 #include "http_resource.hpp"
 
 #include "logger.hpp"
@@ -48,7 +48,11 @@ http_request http_service::parse_request(const std::string& request)
 {
     http_request structured_request;
     http_request::parsing_status code = structured_request.parse(request);
+
     // TODO: Handle parsing return code.
+    if (code != http_request::parsing_status::success) {
+        throw http_invalid_request("Invalid request.");
+    }
 
     return structured_request;
 }
@@ -79,28 +83,29 @@ http_response http_service::execute(const http_request& request) const
     response.http_version = request.http_version;
     response.message_body = "";
     const std::string host = extract_host(request);
+
     // TODO: Check that the host match the request.
+    // ...
 
     try {
-        const auto it_func = method_dispatch_.find(request.method);
+        const auto it_func = method_dispatch_.find(execution_handler_identifier{request.http_version, request.method});
         if (it_func == method_dispatch_.cend()) {
+
             response.status_code = 501;
+        } else {
+            (it_func->second)(this, request, response);
         }
-
-        (it_func->second)(this, request, response);
     } catch (std::exception& e) {
-        // Resource cannot be loaded, send out a 404 response.
-        response.status_code = 404;
+        // Resource cannot be loaded, send out a 500 (Internal Server Error) response.
+        response.status_code = 500;
     }
-
-    response.response_header["Server"] = "http-cpp v0.1";
-    response.general_header["Date"] = http_date();
 
     return response;
 }
 
 void http_service::execute_options(const http_request& request, http_response& response) const
 {
+    response.status_code = 501;
 }
 
 void http_service::execute_get(const http_request& request, http_response& response) const
@@ -132,7 +137,7 @@ void http_service::execute_head(const http_request& request, http_response& resp
         http_resource::info meta = resource.fetch_resource_info(magic_handle_);
 
         response.entity_header["Content-Type"] = meta.content_type;
-        response.entity_header["Content-Length"] = meta.content_length;
+        response.entity_header["Content-Length"] = std::to_string(meta.content_length);
 
         response.status_code = 200;
     } catch (std::exception& e) {
@@ -143,31 +148,22 @@ void http_service::execute_head(const http_request& request, http_response& resp
 
 void http_service::execute_post(const http_request& request, http_response& response) const
 {
+    response.status_code = 501;
 }
 
 void http_service::execute_put(const http_request& request, http_response& response) const
 {
+    response.status_code = 501;
 }
 
 void http_service::execute_delete(const http_request& request, http_response& response) const
 {
+    response.status_code = 501;
 }
 
 void http_service::execute_trace(const http_request& request, http_response& response) const
 {
-}
-
-// Construct and HTTP-date as an rfc1123-date
-std::string http_service::http_date()
-{
-    std::stringstream date_builder;
-
-    boost::local_time::local_date_time t(boost::local_time::local_sec_clock::local_time(boost::local_time::time_zone_ptr()));
-    boost::local_time::local_time_facet* lf(new boost::local_time::local_time_facet("%a, %d %b %Y %H:%M:%S GMT"));
-    date_builder.imbue(std::locale(date_builder.getloc(), lf));
-    date_builder << t;
-
-    return date_builder.str();
+    response.status_code = 501;
 }
 
 std::string http_service::extract_host(const http_request& request)
@@ -223,13 +219,14 @@ std::string http_service::extract_host(const http_request& request)
 
 http_service::exec_dispatch_t http_service::dispatch_construction()
 {
-    return {
-        {http_constants::method::m_options, &http_service::execute_options},
-        {http_constants::method::m_get    , &http_service::execute_get},
-        {http_constants::method::m_head   , &http_service::execute_head},
-        {http_constants::method::m_post   , &http_service::execute_post},
-        {http_constants::method::m_put    , &http_service::execute_put},
-        {http_constants::method::m_delete , &http_service::execute_delete},
-        {http_constants::method::m_trace  , &http_service::execute_trace}
-    };
+    exec_dispatch_t dispatcher;
+    dispatcher.emplace(execution_handler_identifier{"HTTP/1.1", http_constants::method::m_options}, &http_service::execute_options);
+    dispatcher.emplace(execution_handler_identifier{"HTTP/1.1", http_constants::method::m_get}, &http_service::execute_get);
+    //dispatcher.emplace(execution_handler_identifier{"HTTP/1.1", http_constants::method::m_head}, &http_service::execute_head);
+    dispatcher.emplace(execution_handler_identifier{"HTTP/1.1", http_constants::method::m_post}, &http_service::execute_post);
+    dispatcher.emplace(execution_handler_identifier{"HTTP/1.1", http_constants::method::m_put}, &http_service::execute_put);
+    dispatcher.emplace(execution_handler_identifier{"HTTP/1.1", http_constants::method::m_delete}, &http_service::execute_delete);
+    dispatcher.emplace(execution_handler_identifier{"HTTP/1.1", http_constants::method::m_trace}, &http_service::execute_trace);
+
+    return dispatcher;
 }

@@ -15,7 +15,7 @@ class http_resource
 {
 public:
     struct info {
-        uint32_t content_length;
+        size_t content_length;
         std::string content_type;
     };
 
@@ -51,7 +51,10 @@ private:
 template <typename OutputStream, typename CharT>
 void http_resource::fetch_resource_content(OutputStream& stream)
 {
-    stream_.seekg(std::ios_base::beg);
+    // Make sure the stream is valid and at the start.
+    stream_.clear();
+    stream_.seekg(0, std::ios_base::beg);
+
     std::copy(std::istreambuf_iterator<CharT>(stream_),
               std::istreambuf_iterator<CharT>(),
               std::ostreambuf_iterator<CharT>(stream));

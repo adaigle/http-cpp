@@ -82,7 +82,7 @@ TEST_F (http_conformance_method_test, post) {
 
         http_response response = service_->execute(structured_request);
 
-        EXPECT_TRUE(response.status_code == 200 || response.status_code == 204) "RFC2616 section 9.5: The action performed by the POST method might not result in a resource that can be identified by a URI. In this case, either 200 (OK) or 204 (No Content) is the appropriate response status, depending on whether or not the response includes an entity that describes the result.";
+        EXPECT_TRUE(response.status_code == 200 || response.status_code == 204) << "RFC2616 section 9.5: The action performed by the POST method might not result in a resource that can be identified by a URI. In this case, either 200 (OK) or 204 (No Content) is the appropriate response status, depending on whether or not the response includes an entity that describes the result.";
     }
 
     ///////////////////////////////////////////////////////
@@ -93,9 +93,9 @@ TEST_F (http_conformance_method_test, post) {
 
         http_response response = service_->execute(structured_request);
 
-        EXPECT_EQ(201, response.status_code) "RFC2616 section 9.5: If a resource has been created on the origin server, the response SHOULD be 201 (Created).";
+        EXPECT_EQ(201, response.status_code) << "RFC2616 section 9.5: If a resource has been created on the origin server, the response SHOULD be 201 (Created).";
         const auto it = response.response_header.find("Location");
-        EXPECT_NE(it, response.response_header.cend()) "RFC2616 section 9.5: If a resource has been created on the origin server, the response SHOULD contain a Location header (see section 14.30).";
+        EXPECT_NE(it, response.response_header.cend()) << "RFC2616 section 9.5: If a resource has been created on the origin server, the response SHOULD contain a Location header (see section 14.30).";
         EXPECT_FALSE(it->second.empty());
     }
 }

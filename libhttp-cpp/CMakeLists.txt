@@ -88,8 +88,10 @@ add_custom_target(check
 ##############################################################################
 
 add_library(libhttp-cpp SHARED
+    include/http_exception.h
     include/http_service.h
     include/http_structure.hpp
+    include/http_service.hpp
     src/http_service.cpp
     src/http_structure.cpp
     src/http_resource.hpp
@@ -99,7 +101,8 @@ add_library(libhttp-cpp SHARED
     src/main.cpp
 )
 set_property(TARGET libhttp-cpp PROPERTY PREFIX "")
-set_property(TARGET libhttp-cpp PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/include")
+set_property(TARGET libhttp-cpp APPEND PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/include")
+set_property(TARGET libhttp-cpp APPEND PROPERTY INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
 if(${libmagic_FOUND})
     set_property(TARGET libhttp-cpp APPEND PROPERTY COMPILE_DEFINITIONS HAVE_LIBMAGIC)

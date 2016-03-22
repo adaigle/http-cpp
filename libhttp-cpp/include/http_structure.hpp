@@ -37,6 +37,8 @@ struct http_constants
                                            "Expires", "Last-Modified"};
 
     static std::string reason_phrase(uint16_t code);
+
+    static std::string http_date();
 };
 
 struct http_request
@@ -104,6 +106,8 @@ struct http_response
     header_map  response_header;
     header_map  entity_header;
     std::string message_body;
+
+    static http_response create_response();
 };
 
 template <typename CharT, typename Traits>
