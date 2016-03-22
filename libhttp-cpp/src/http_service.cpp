@@ -222,7 +222,7 @@ http_service::exec_dispatch_t http_service::dispatch_construction()
     exec_dispatch_t dispatcher;
     dispatcher.emplace(execution_handler_identifier{"HTTP/1.1", http_constants::method::m_options}, &http_service::execute_options);
     dispatcher.emplace(execution_handler_identifier{"HTTP/1.1", http_constants::method::m_get}, &http_service::execute_get);
-    //dispatcher.emplace(execution_handler_identifier{"HTTP/1.1", http_constants::method::m_head}, &http_service::execute_head);
+    dispatcher.emplace(execution_handler_identifier{"HTTP/1.1", http_constants::method::m_head}, &http_service::execute_head);
     dispatcher.emplace(execution_handler_identifier{"HTTP/1.1", http_constants::method::m_post}, &http_service::execute_post);
     dispatcher.emplace(execution_handler_identifier{"HTTP/1.1", http_constants::method::m_put}, &http_service::execute_put);
     dispatcher.emplace(execution_handler_identifier{"HTTP/1.1", http_constants::method::m_delete}, &http_service::execute_delete);

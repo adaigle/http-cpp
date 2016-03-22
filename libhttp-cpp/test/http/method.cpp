@@ -49,7 +49,9 @@ TEST_F (http_conformance_method_test, head) {
     for (const auto& header : get_response.general_header) {
         const auto it = response.general_header.find(header.first);
         EXPECT_NE(it, response.general_header.cend());
-        EXPECT_EQ(it->second, header.second) << "RFC2616 section 9.4: The metainformation contained in the HTTP headers in response to a HEAD request SHOULD be identical to the information sent in response to a GET request.";
+        if (it != response.general_header.cend()) {
+            EXPECT_EQ(it->second, header.second) << "RFC2616 section 9.4: The metainformation contained in the HTTP headers in response to a HEAD request SHOULD be identical to the information sent in response to a GET request.";
+        }
     }
     EXPECT_EQ(get_response.general_header.size(), response.general_header.size());
 
@@ -58,7 +60,9 @@ TEST_F (http_conformance_method_test, head) {
     for (const auto& header : get_response.response_header) {
         const auto it = response.response_header.find(header.first);
         EXPECT_NE(it, response.response_header.cend());
-        EXPECT_EQ(it->second, header.second) << "RFC2616 section 9.4: The metainformation contained in the HTTP headers in response to a HEAD request SHOULD be identical to the information sent in response to a GET request.";
+        if (it != response.response_header.cend()) {
+            EXPECT_EQ(it->second, header.second) << "RFC2616 section 9.4: The metainformation contained in the HTTP headers in response to a HEAD request SHOULD be identical to the information sent in response to a GET request.";
+        }
     }
     EXPECT_EQ(get_response.response_header.size(), response.response_header.size());
 
@@ -67,7 +71,9 @@ TEST_F (http_conformance_method_test, head) {
     for (const auto& header : get_response.entity_header) {
         const auto it = response.entity_header.find(header.first);
         EXPECT_NE(it, response.entity_header.cend());
-        EXPECT_EQ(it->second, header.second) << "RFC2616 section 9.4: The metainformation contained in the HTTP headers in response to a HEAD request SHOULD be identical to the information sent in response to a GET request.";
+        if (it != response.entity_header.cend()) {
+            EXPECT_EQ(it->second, header.second) << "RFC2616 section 9.4: The metainformation contained in the HTTP headers in response to a HEAD request SHOULD be identical to the information sent in response to a GET request.";
+        }
     }
     EXPECT_EQ(get_response.entity_header.size(), response.entity_header.size());
 }
@@ -96,6 +102,8 @@ TEST_F (http_conformance_method_test, post) {
         EXPECT_EQ(201, response.status_code) << "RFC2616 section 9.5: If a resource has been created on the origin server, the response SHOULD be 201 (Created).";
         const auto it = response.response_header.find("Location");
         EXPECT_NE(it, response.response_header.cend()) << "RFC2616 section 9.5: If a resource has been created on the origin server, the response SHOULD contain a Location header (see section 14.30).";
-        EXPECT_FALSE(it->second.empty());
+        if (it != response.response_header.cend()) {
+            EXPECT_FALSE(it->second.empty());
+        }
     }
 }
