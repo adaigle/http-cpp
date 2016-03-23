@@ -6,7 +6,7 @@
 
 #if defined(HAVE_LIBMAGIC)
 #  include "magic.h"
-#  define LIBMAGIC_HANDLE_ARG const magic_t
+#  define LIBMAGIC_HANDLE_ARG const magic_t&
 #else
 #  define LIBMAGIC_HANDLE_ARG const void*
 #endif

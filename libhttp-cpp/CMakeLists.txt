@@ -96,9 +96,15 @@ add_library(libhttp-cpp SHARED
     src/http_structure.cpp
     src/http_resource.hpp
     src/http_resource.cpp
+    src/http_protocol_handler.h
+    src/http_protocol_handler.hpp
+    src/http_protocol_handler.cpp
+    src/http_protocol_one_one.h
+    src/http_protocol_one_one.cpp
+    src/http_protocol_one_zero.h
+    src/http_protocol_one_zero.cpp
     src/logger.hpp
     src/logger.cpp
-    src/main.cpp
 )
 set_property(TARGET libhttp-cpp PROPERTY PREFIX "")
 set_property(TARGET libhttp-cpp APPEND PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/include")

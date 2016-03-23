@@ -8,6 +8,17 @@
 #include <string>
 #include <type_traits>
 
+#if defined(HAVE_LIBMAGIC)
+#  include "magic.h"
+
+struct magic_deleter {
+    constexpr magic_deleter() = default;
+    void operator()(magic_set* ptr) const {
+        ::magic_close(static_cast<magic_t>(ptr));
+    }
+};
+#endif
+
 struct execution_handler_identifier {
     std::string            http_version;
     http_constants::method method;

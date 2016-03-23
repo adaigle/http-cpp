@@ -1,4 +1,4 @@
-#include "../include/http_structure.hpp"
+#include "http_structure.hpp"
 
 #include <algorithm>
 #include <ctype.h>
@@ -19,55 +19,61 @@ constexpr decltype(http_constants::GENERAL_HEADER) http_constants::GENERAL_HEADE
 constexpr decltype(http_constants::REQUEST_HEADER) http_constants::REQUEST_HEADER;
 constexpr decltype(http_constants::ENTITY_HEADER) http_constants::ENTITY_HEADER;
 
-std::string http_constants::reason_phrase(uint16_t code)
+std::string http_constants::reason_phrase(http_constants::status code)
 {
 	switch (code) {
-		case 100: return "Continue";
-		case 101: return "Switching Protocols";
+		case http_constants::status::http_continue: 				return "Continue";
+		case http_constants::status::http_switching_protocols: 		return "Switching Protocols";
 
-		case 200: return "OK";
-		case 201: return "Created";
-		case 202: return "Accepted";
-		case 203: return "Non-Authoritative Information";
-		case 204: return "No Content";
-		case 205: return "Reset Content";
-		case 206: return "Partial Content";
+		case http_constants::status::http_ok: 						return "OK";
+		case http_constants::status::http_created: 					return "Created";
+		case http_constants::status::http_accepted: 				return "Accepted";
+		case http_constants::status::http_nonauthoritative: 		return "Non-Authoritative Information";
+		case http_constants::status::http_no_content: 				return "No Content";
+		case http_constants::status::http_reset_content: 			return "Reset Content";
+		case http_constants::status::http_partial_content: 			return "Partial Content";
 
-		case 300: return "Multiple Choices";
-		case 301: return "Moved Permanently";
-		case 302: return "Found";
-		case 303: return "See Other";
-		case 304: return "Not Modified";
-		case 305: return "Use Proxy";
-		case 307: return "Temporary Redirect";
+		case http_constants::status::http_multiple_choices: 		return "Multiple Choices";
+		case http_constants::status::http_moved_permanently: 		return "Moved Permanently";
+		case http_constants::status::http_found: 					return "Found";
+		case http_constants::status::http_see_other: 				return "See Other";
+		case http_constants::status::http_not_modified: 			return "Not Modified";
+		case http_constants::status::http_use_proxy: 				return "Use Proxy";
+		case http_constants::status::http_temporary_redirect: 		return "Temporary Redirect";
 
-		case 400: return "Bad Request";
-		case 401: return "Unauthorized";
-		case 402: return "Payment Required";
-		case 403: return "Forbidden";
-		case 404: return "Not Found";
-		case 405: return "Method Not Allowed";
-		case 406: return "Not Acceptable";
-		case 407: return "Proxy Authentication Required";
-		case 408: return "Request Time-out";
-		case 409: return "Conflict";
-		case 410: return "Gone";
-		case 411: return "Length Required";
-		case 412: return "Precondition Failed";
-		case 413: return "Request Entity Too Large";
-		case 414: return "Request-URI Too Large";
-		case 415: return "Unsupported Media Type";
-		case 416: return "Requested range not satisfiable";
-		case 417: return "Expectation Failed";
+		case http_constants::status::http_bad_request: 				return "Bad Request";
+		case http_constants::status::http_unhautorized: 			return "Unauthorized";
+		case http_constants::status::http_payment_required: 		return "Payment Required";
+		case http_constants::status::http_forbidden: 				return "Forbidden";
+		case http_constants::status::http_not_found: 				return "Not Found";
+		case http_constants::status::http_method_not_allowed: 		return "Method Not Allowed";
+		case http_constants::status::http_not_acceptable: 			return "Not Acceptable";
+		case http_constants::status::http_proxy_authentication_required: return "Proxy Authentication Required";
+		case http_constants::status::http_request_timeout: 			return "Request Time-out";
+		case http_constants::status::http_conflict: 				return "Conflict";
+		case http_constants::status::http_gone: 					return "Gone";
+		case http_constants::status::http_length_required: 			return "Length Required";
+		case http_constants::status::http_precondition_failed: 		return "Precondition Failed";
+		case http_constants::status::http_request_entry_too_large: 	return "Request Entity Too Large";
+		case http_constants::status::http_requesturi_too_large: 	return "Request-URI Too Large";
+		case http_constants::status::http_unsupported_media_type: 	return "Unsupported Media Type";
+		case http_constants::status::http_requested_range_not_satisfiable: return "Requested range not satisfiable";
+		case http_constants::status::http_expectation_failed: 		return "Expectation Failed";
 
-		case 500: return "Internal Server Error";
-		case 501: return "Not Implemented";
-		case 502: return "Bad Gateway";
-		case 503: return "Service Unavailable";
-		case 504: return "Gateway Time-out";
-		case 505: return "HTTP Version not supported";
+		case http_constants::status::http_internal_server_error: 	return "Internal Server Error";
+		case http_constants::status::http_not_implemented: 			return "Not Implemented";
+		case http_constants::status::http_bad_gateway: 				return "Bad Gateway";
+		case http_constants::status::http_service_unavailable: 		return "Service Unavailable";
+		case http_constants::status::http_gateway_timeout: 			return "Gateway Time-out";
+		case http_constants::status::http_version_not_supported: 	return "HTTP Version not supported";
 		default: throw std::invalid_argument("The HTTP status code provided is invalid.");
 	}
+}
+
+http_constants::status_class http_constants::get_status_class(http_constants::status code)
+{
+	const uint8_t first_digit = static_cast<std::underlying_type<decltype(code)>::type>(code) / 100;
+	return static_cast<http_constants::status_class>(first_digit);
 }
 
 // Construct and HTTP-date as an rfc1123-date
@@ -168,17 +174,4 @@ http_request::parsing_status http_request::parse(const std::string& frame)
 		logger::wire() << h.first << ":" << h.second << logger::endl;
 
 	return parsing_status::success;
-}
-
-http_response http_response::create_response()
-{
-	http_response response;
-
-	// Default HTTP version, potentially overwritten on request.
-	response.http_version = "HTTP/1.1";
-
-    response.response_header["Server"] = "http-cpp v0.1";
-    response.general_header["Date"] = http_constants::http_date();
-
-	return response;
 }

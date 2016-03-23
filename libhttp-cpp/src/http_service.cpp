@@ -8,40 +8,42 @@
 #include <boost/filesystem.hpp>
 
 #include "http_exception.h"
-#include "http_resource.hpp"
+#include "http_protocol_handler.h"
 
 #include "logger.hpp"
 
 #if defined(HAVE_LIBMAGIC)
-    magic_t http_service::magic_handle_ = nullptr;
+    http_service::magic_up http_service::up_magic_handle_;
 #endif
 
 http_service::http_service(const std::string& name, const std::string& path) :
-    name_(name), path_(path), method_dispatch_(dispatch_construction())
+    name_(name), path_(path)
 {
+    environment.path = path;
+
 #if defined(HAVE_LIBMAGIC)
-    if (magic_handle_ == nullptr) {
-        magic_handle_ = ::magic_open(MAGIC_ERROR | MAGIC_MIME);
+    if (!up_magic_handle_) {
+        up_magic_handle_ = magic_up(::magic_open(MAGIC_ERROR | MAGIC_MIME));
 
         if (!boost::filesystem::exists(LIBMAGIC_MAGIC_FILE)) {
             logger::error() << "Database for libmagic could not be found at '" << LIBMAGIC_MAGIC_FILE << "'." << logger::endl;
-            magic_handle_ = nullptr;
+            up_magic_handle_.reset();
         } else {
             logger::trace() << "Loading magic database..." << logger::endl;
-            ::magic_load(magic_handle_, LIBMAGIC_MAGIC_FILE);
+            ::magic_load(up_magic_handle_.get(), LIBMAGIC_MAGIC_FILE);
 
-            const char* error = ::magic_error(magic_handle_);
+            const char* error = ::magic_error(up_magic_handle_.get());
             if (error != nullptr) logger::warn() << "libmagic error: " << error << logger::endl;
             else logger::debug() << "Successfully loaded magic database." << logger::endl;
         }
     }
+    environment.magic_handle = up_magic_handle_.get();
 #endif
+
 }
 
 http_service::~http_service()
 {
-    // TODO: Handle a better single owner of magic_handle_.
-    // ::magic_close(magic_handle_);
 }
 
 http_request http_service::parse_request(const std::string& request)
@@ -80,90 +82,29 @@ std::string http_service::execute(const std::string& request) const
 http_response http_service::execute(const http_request& request) const
 {
     http_response response;
-    response.http_version = request.http_version;
-    response.message_body = "";
+
     const std::string host = extract_host(request);
 
     // TODO: Check that the host match the request.
     // ...
 
     try {
-        const auto it_func = method_dispatch_.find(execution_handler_identifier{request.http_version, request.method});
-        if (it_func == method_dispatch_.cend()) {
-
-            response.status_code = 501;
+        http_protocol_handler* handler = http_protocol_handler::make_handler(request.http_version);
+        if (handler == nullptr) {
+            // TODO: Assume that a wrong/not-implemented http version is a bad request for now.
+            response.status_code = http_constants::status::http_bad_request;
         } else {
-            (it_func->second)(this, request, response);
+            response = handler->make_response();
+            handler->execute(environment, request, response);
         }
     } catch (std::exception& e) {
         // Resource cannot be loaded, send out a 500 (Internal Server Error) response.
-        response.status_code = 500;
+        response.status_code = http_constants::status::http_internal_server_error;
+        logger::error() << "Exception while executing the request:" << logger::endl;
+        logger::error() << e.what() << logger::endl;
     }
 
     return response;
-}
-
-void http_service::execute_options(const http_request& request, http_response& response) const
-{
-    response.status_code = 501;
-}
-
-void http_service::execute_get(const http_request& request, http_response& response) const
-{
-    std::string path = path_ + request.request_uri;
-    try {
-        http_resource resource = http_resource::get_resource(path);
-        http_resource::info meta = resource.fetch_resource_info(magic_handle_);
-
-        response.entity_header["Content-Type"] = meta.content_type;
-        response.entity_header["Content-Length"] = std::to_string(meta.content_length);
-
-        std::ostringstream resource_stream;
-        resource.fetch_resource_content(resource_stream);
-        response.message_body = resource_stream.str();
-
-        response.status_code = 200;
-    } catch (std::exception& e) {
-        // Resource cannot be loaded, send out a 404 response.
-        response.status_code = 404;
-    }
-}
-
-void http_service::execute_head(const http_request& request, http_response& response) const
-{
-    std::string path = path_ + request.request_uri;
-    try {
-        http_resource resource = http_resource::get_resource(path);
-        http_resource::info meta = resource.fetch_resource_info(magic_handle_);
-
-        response.entity_header["Content-Type"] = meta.content_type;
-        response.entity_header["Content-Length"] = std::to_string(meta.content_length);
-
-        response.status_code = 200;
-    } catch (std::exception& e) {
-        // Resource cannot be loaded, send out a 404 response.
-        response.status_code = 404;
-    }
-}
-
-void http_service::execute_post(const http_request& request, http_response& response) const
-{
-    response.status_code = 501;
-}
-
-void http_service::execute_put(const http_request& request, http_response& response) const
-{
-    response.status_code = 501;
-}
-
-void http_service::execute_delete(const http_request& request, http_response& response) const
-{
-    response.status_code = 501;
-}
-
-void http_service::execute_trace(const http_request& request, http_response& response) const
-{
-    response.status_code = 501;
 }
 
 std::string http_service::extract_host(const http_request& request)
@@ -215,18 +156,4 @@ std::string http_service::extract_host(const http_request& request)
 
     logger::warn() << "Invalid Request-URI: " << request.request_uri << logger::endl;
     throw std::invalid_argument("Invalid Request-URI parameter in the request, could not detect a valid format.");
-}
-
-http_service::exec_dispatch_t http_service::dispatch_construction()
-{
-    exec_dispatch_t dispatcher;
-    dispatcher.emplace(execution_handler_identifier{"HTTP/1.1", http_constants::method::m_options}, &http_service::execute_options);
-    dispatcher.emplace(execution_handler_identifier{"HTTP/1.1", http_constants::method::m_get}, &http_service::execute_get);
-    dispatcher.emplace(execution_handler_identifier{"HTTP/1.1", http_constants::method::m_head}, &http_service::execute_head);
-    dispatcher.emplace(execution_handler_identifier{"HTTP/1.1", http_constants::method::m_post}, &http_service::execute_post);
-    dispatcher.emplace(execution_handler_identifier{"HTTP/1.1", http_constants::method::m_put}, &http_service::execute_put);
-    dispatcher.emplace(execution_handler_identifier{"HTTP/1.1", http_constants::method::m_delete}, &http_service::execute_delete);
-    dispatcher.emplace(execution_handler_identifier{"HTTP/1.1", http_constants::method::m_trace}, &http_service::execute_trace);
-
-    return dispatcher;
 }

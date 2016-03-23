@@ -1,10 +1,8 @@
 #ifndef HTTP_SERVICE_H
 #define HTTP_SERVICE_H
 
-#include <functional>
+#include <memory>
 #include <string>
-#include <unordered_map>
-#include <type_traits>
 
 #include "http_service.hpp"
 #include "http_structure.hpp"
@@ -21,7 +19,6 @@
 class http_service
 {
 public:
-
     http_service(const std::string& name, const std::string& path);
     ~http_service();
 
@@ -48,31 +45,19 @@ public:
     /// \param request The http request.
     /// \returns The http response given as an object.
     http_response execute(const http_request& request) const;
-protected:
-    void execute_options(const http_request&, http_response&) const;
-    void execute_get(const http_request&, http_response&) const;
-    void execute_head(const http_request&, http_response&) const;
-    void execute_post(const http_request&, http_response&) const;
-    void execute_put(const http_request&, http_response&) const;
-    void execute_delete(const http_request&, http_response&) const;
-    void execute_trace(const http_request&, http_response&) const;
 
+protected:
     static std::string extract_host(const http_request&);
 
 private:
-
-    using exec_dispatch_signature_t = void(const http_service* const, const http_request&, http_response&);
-    using exec_dispatch_t = std::unordered_map<execution_handler_identifier,
-                                               std::function<exec_dispatch_signature_t>>;
-
-    exec_dispatch_t dispatch_construction();
-
     const std::string name_;
     std::string path_;
-    const exec_dispatch_t method_dispatch_;
+
+    http_service_info environment;
 
 #if defined(HAVE_LIBMAGIC)
-    static magic_t magic_handle_;
+    using magic_up = std::unique_ptr<magic_set, magic_deleter>;
+    static magic_up up_magic_handle_;
 #endif
 };
 

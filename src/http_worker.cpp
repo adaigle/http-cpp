@@ -96,7 +96,7 @@ void http_worker::handle_request(zmq::socket_t& socket)
     // Construct a transaction for the request.
     logger::debug() << "Worker #" << identifier_ << ": processing transaction '" << id << "'." << logger::endl;
 
-    http_response response = http_response::create_response();
+    http_response response;
     try {
         ///////////////////////////////////////////////////
         // 1. Extract the request from the inproc messaging queue.
@@ -123,9 +123,9 @@ void http_worker::handle_request(zmq::socket_t& socket)
         // 3. Execute the http request.
         response = website.execute(request);
     } catch(http_invalid_request& e) {
-        response.status_code = 400;
+        response.status_code = http_constants::status::http_bad_request;
     } catch(...) {
-        response.status_code = 500;
+        response.status_code = http_constants::status::http_internal_server_error;
     }
 
     ///////////////////////////////////////////////////
@@ -138,13 +138,13 @@ void http_worker::handle_request(zmq::socket_t& socket)
     socket.send(&id.identity, id.length, ZMQ_SNDMORE);
     socket.send(string_response.c_str(), string_response.size());
 
-    const uint8_t first_digit = response.status_code / 100;
     logger::type response_type;
-    switch (first_digit) {
-        case 1: case 3: response_type = logger::type::info; break;
-        case 2: response_type = logger::type::info_green; break;
-        case 4: response_type = logger::type::warning; break;
-        case 5: response_type = logger::type::error; break;
+    switch (http_constants::get_status_class(response.status_code)) {
+        case http_constants::status_class::informational:
+        case http_constants::status_class::redirection: response_type = logger::type::info; break;
+        case http_constants::status_class::success: response_type = logger::type::info_green; break;
+        case http_constants::status_class::client_error: response_type = logger::type::warning; break;
+        case http_constants::status_class::server_error: response_type = logger::type::error; break;
         default: response_type = logger::type::error;
     }
 
