@@ -3,11 +3,16 @@
 
 #include "http_protocol_handler.h"
 
+#include <memory>
+
 class http_protocol_one_zero : public http_protocol_handler
 {
 public:
 
     static constexpr auto http_version = "HTTP/1.0";
+
+    http_protocol_one_zero(std::unique_ptr<http_resource_factory>&& factory) noexcept;
+    virtual ~http_protocol_one_zero() = default;
 
     /// \brief Creates a basic response for a specific protocol version.
     ///

@@ -8,7 +8,7 @@
 #include "logger.hpp"
 
 http_website::http_website(uint16_t port, const std::string& root, const std::string& name) noexcept :
-    port_(port), name_(name), service_(name, root)
+    port_(port), name_(name), service_(name, name, root)
 {
 }
 

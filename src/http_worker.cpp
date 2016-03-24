@@ -10,6 +10,7 @@
 #include <boost/date_time/local_time/local_time.hpp>
 
 #include "http_exception.h"
+#include "http_structure.hpp"
 
 #include "logger.hpp"
 #include "identity.h"

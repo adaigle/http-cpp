@@ -1,0 +1,67 @@
+#ifndef HTTP_FILESYSTEM_RESOURCE_FACTORY_H
+#define HTTP_FILESYSTEM_RESOURCE_FACTORY_H
+
+#include <memory>
+#include <string>
+
+#if defined(HAVE_LIBMAGIC)
+#  if !defined(LIBMAGIC_MAGIC_FILE)
+#    error "The path to libmagic folder must be provided."
+#  endif
+#  include "magic.h"
+
+struct magic_deleter {
+    constexpr magic_deleter() = default;
+    void operator()(magic_set* ptr) const {
+        ::magic_close(static_cast<magic_t>(ptr));
+    }
+};
+    using magic_up = std::unique_ptr<magic_set, magic_deleter>;
+#else
+    using magic_up = std::unique_ptr<void>;
+#endif
+
+// Forward declaration of a general resource.
+class http_resource;
+
+class http_resource_factory
+{
+public:
+    /// \brief Fetch the resource content in a stream format.
+    ///
+    /// \param stream The stream to output the content to.
+    static std::unique_ptr<http_resource_factory> create_resource_factory(const std::string& service_path);
+
+    /// \brief Fetch the resource content in a stream format.
+    ///
+    /// \param stream The stream to output the content to.
+    virtual std::unique_ptr<http_resource> create_handle(const std::string& request_uri) noexcept = 0;
+};
+
+class http_filesystem_resource_factory : public http_resource_factory
+{
+public:
+    http_filesystem_resource_factory(const std::string& virtual_path) noexcept;
+
+    /// \brief Fetch the resource content in a stream format.
+    ///
+    /// \param stream The stream to output the content to.
+    virtual std::unique_ptr<http_resource> create_handle(const std::string& request_uri) noexcept override;
+protected:
+    const std::string virtual_path_;
+    static magic_up up_magic_handle_;
+};
+
+class http_external_resource_factory : public http_resource_factory
+{
+public:
+    /// \brief Fetch the resource content in a stream format.
+    ///
+    /// \param stream The stream to output the content to.
+    virtual std::unique_ptr<http_resource> create_handle(const std::string& request_uri) noexcept override;
+
+protected:
+    const std::string path_to_dll;
+};
+
+#endif

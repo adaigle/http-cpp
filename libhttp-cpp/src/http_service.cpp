@@ -1,49 +1,21 @@
-#include "http_service.h"
+#include "http_service.hpp"
+#include "http_structure.hpp"
 
 #include <exception>
 #include <regex>
 #include <sstream>
 #include <string>
 
-#include <boost/filesystem.hpp>
-
 #include "http_exception.h"
 #include "http_protocol_handler.h"
 
 #include "logger.hpp"
 
-#if defined(HAVE_LIBMAGIC)
-    http_service::magic_up http_service::up_magic_handle_;
-#endif
-
-http_service::http_service(const std::string& name, const std::string& path) :
-    name_(name), path_(path)
+http_service::http_service(const std::string& name, const std::string& host, const std::string& path) :
+    name_(name), host_(host), path_(path)
 {
     environment.path = path;
-
-#if defined(HAVE_LIBMAGIC)
-    if (!up_magic_handle_) {
-        up_magic_handle_ = magic_up(::magic_open(MAGIC_ERROR | MAGIC_MIME));
-
-        if (!boost::filesystem::exists(LIBMAGIC_MAGIC_FILE)) {
-            logger::error() << "Database for libmagic could not be found at '" << LIBMAGIC_MAGIC_FILE << "'." << logger::endl;
-            up_magic_handle_.reset();
-        } else {
-            logger::trace() << "Loading magic database..." << logger::endl;
-            ::magic_load(up_magic_handle_.get(), LIBMAGIC_MAGIC_FILE);
-
-            const char* error = ::magic_error(up_magic_handle_.get());
-            if (error != nullptr) logger::warn() << "libmagic error: " << error << logger::endl;
-            else logger::debug() << "Successfully loaded magic database." << logger::endl;
-        }
-    }
-    environment.magic_handle = up_magic_handle_.get();
-#endif
-
-}
-
-http_service::~http_service()
-{
+    environment.host = host;
 }
 
 http_request http_service::parse_request(const std::string& request)
@@ -83,13 +55,12 @@ http_response http_service::execute(const http_request& request) const
 {
     http_response response;
 
-    const std::string host = extract_host(request);
-
-    // TODO: Check that the host match the request.
-    // ...
+    // Host checking is handled by the protocol handler as various version of the http
+    // protocol have different requirement.
+    const std::string host = http_service::extract_host(request);
 
     try {
-        http_protocol_handler* handler = http_protocol_handler::make_handler(request.http_version);
+        http_protocol_handler* handler = http_protocol_handler::make_handler(path_, request.http_version);
         if (handler == nullptr) {
             // TODO: Assume that a wrong/not-implemented http version is a bad request for now.
             response.status_code = http_constants::status::http_bad_request;

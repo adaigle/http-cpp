@@ -3,24 +3,27 @@
 
 #include <memory>
 #include <string>
+#include <unordered_map>
 
-#include "http_service.hpp"
-#include "http_structure.hpp"
+#include "http_structure.h"
 
-#if defined(HAVE_LIBMAGIC)
-#  if !defined(LIBMAGIC_MAGIC_FILE)
-#    error "The path to libmagic folder must be provided."
-#  endif
-#  include "magic.h"
-#endif
+class http_protocol_handler;
 
 /// \brief Provide parsing and execution capacities of http request/response.
 ///
 class http_service
 {
 public:
-    http_service(const std::string& name, const std::string& path);
-    ~http_service();
+    /// \brief Constructor of an http service.
+    ///
+    /// \param name Internal name of the service.
+    /// \param host Host of the http service (external name).
+    /// \param path Path to the website.
+    http_service(const std::string& name, const std::string& host, const std::string& path);
+
+    /// \brief Default destructor.
+    ///
+    ~http_service() = default;
 
     /// \brief Parse an http request from a string.
     ///
@@ -47,18 +50,17 @@ public:
     http_response execute(const http_request& request) const;
 
 protected:
+    http_service() = delete;
+    http_service(const http_service&) = delete;
+    http_service& operator=(const http_service&) = delete;
+
     static std::string extract_host(const http_request&);
 
-private:
     const std::string name_;
-    std::string path_;
+    const std::string host_;
+    const std::string path_;
 
     http_service_info environment;
-
-#if defined(HAVE_LIBMAGIC)
-    using magic_up = std::unique_ptr<magic_set, magic_deleter>;
-    static magic_up up_magic_handle_;
-#endif
 };
 
 #endif

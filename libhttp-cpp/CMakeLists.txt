@@ -11,7 +11,7 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/
 # Include boost
 set(Boost_USE_STATIC_LIBS ON)
 set(Boost_COMPILER "-clang37")
-find_package(Boost 1.60 COMPONENTS system filesystem date_time REQUIRED)
+find_package(Boost 1.60 COMPONENTS system filesystem REQUIRED)
 if(${Boost_FOUND})
     if (NOT TARGET boost)
         add_library(boost INTERFACE IMPORTED)
@@ -32,14 +32,6 @@ if(${Boost_FOUND})
         set_property(TARGET boost-filesystem PROPERTY IMPORTED_LOCATION "${Boost_FILESYSTEM_LIBRARY}")
         set_property(TARGET boost-filesystem PROPERTY IMPORTED_LOCATION_DEBUG "${Boost_FILESYSTEM_LIBRARY_DEBUG}")
         set_property(TARGET boost-filesystem PROPERTY IMPORTED_LOCATION_RELEASE "${Boost_FILESYSTEM_LIBRARY_RELEASE}")
-    endif()
-
-    if (NOT TARGET boost-date_time)
-        add_library(boost-date_time STATIC IMPORTED)
-        set_property(TARGET boost-date_time PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${Boost_INCLUDE_DIR})
-        set_property(TARGET boost-date_time PROPERTY IMPORTED_LOCATION "${Boost_DATE_TIME_LIBRARY}")
-        set_property(TARGET boost-date_time PROPERTY IMPORTED_LOCATION_DEBUG "${Boost_DATE_TIME_LIBRARY_DEBUG}")
-        set_property(TARGET boost-date_time PROPERTY IMPORTED_LOCATION_RELEASE "${Boost_DATE_TIME_LIBRARY_RELEASE}")
     endif()
 endif()
 
@@ -90,12 +82,11 @@ add_custom_target(check
 add_library(libhttp-cpp SHARED
     include/http_exception.h
     include/http_service.h
-    include/http_structure.hpp
     include/http_service.hpp
+    include/http_structure.h
+    include/http_structure.hpp
     src/http_service.cpp
     src/http_structure.cpp
-    src/http_resource.hpp
-    src/http_resource.cpp
     src/http_protocol_handler.h
     src/http_protocol_handler.hpp
     src/http_protocol_handler.cpp
@@ -103,6 +94,16 @@ add_library(libhttp-cpp SHARED
     src/http_protocol_one_one.cpp
     src/http_protocol_one_zero.h
     src/http_protocol_one_zero.cpp
+    src/http_resource_factory.h
+    src/http_resource_factory.cpp
+    src/http_resource.h
+    src/http_resource.cpp
+    src/http_filesystem_resource.h
+    src/http_filesystem_resource.cpp
+    src/http_directory_listing.h
+    src/http_directory_listing.cpp
+    src/http_external_resource.h
+    src/http_external_resource.cpp
     src/logger.hpp
     src/logger.cpp
 )
@@ -122,7 +123,6 @@ target_link_libraries(libhttp-cpp
     boost
     boost-system
     boost-filesystem
-    boost-date_time
     libmagic
     ${THREADING_LIBRARY}
     ${STANDARD_LIBRARY}

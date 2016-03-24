@@ -1,9 +1,17 @@
 #include "http_protocol_one_zero.h"
 
+#include "http_resource.h"
+#include "http_resource_factory.h"
 #include "http_service.h"
-#include "http_structure.hpp"
 
 constexpr decltype(http_protocol_one_zero::http_version) http_protocol_one_zero::http_version;
+
+
+http_protocol_one_zero::http_protocol_one_zero(std::unique_ptr<http_resource_factory>&& factory) noexcept :
+    http_protocol_handler(std::move(factory))
+{
+
+}
 
 http_response http_protocol_one_zero::make_response() noexcept
 {

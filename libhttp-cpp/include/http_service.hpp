@@ -2,31 +2,11 @@
 #define HTTP_SERVICE_HPP
 
 #include "http_service.h"
-#include "http_structure.hpp"
+#include "http_structure.h"
 
 #include <functional>
 #include <string>
 #include <type_traits>
-
-#if defined(HAVE_LIBMAGIC)
-#  include "magic.h"
-
-struct magic_deleter {
-    constexpr magic_deleter() = default;
-    void operator()(magic_set* ptr) const {
-        ::magic_close(static_cast<magic_t>(ptr));
-    }
-};
-#endif
-
-struct execution_handler_identifier {
-    std::string            http_version;
-    http_constants::method method;
-
-    bool operator==(const execution_handler_identifier& other) const {
-        return http_version == other.http_version && method == other.method;
-    }
-};
 
 namespace std
 {
@@ -57,14 +37,6 @@ struct hash<http_constants::method>
 	size_t operator()(const http_constants::method& x) const {
 		return hash<typename std::underlying_type<http_constants::method>::type>()(
             static_cast<typename std::underlying_type<http_constants::method>::type>(x));
-	}
-};
-
-template <>
-struct hash<execution_handler_identifier>
-{
-	size_t operator()(const execution_handler_identifier& x) const {
-		return hash_combine<decltype(x.http_version), decltype(x.method)>()(x.http_version, x.method);
 	}
 };
 

@@ -3,10 +3,18 @@
 
 #include "http_protocol_handler.h"
 
+#include <functional>
+#include <map>
+#include <memory>
+#include <string>
+
 class http_protocol_one_one : public http_protocol_handler
 {
 public:
     static constexpr auto http_version = "HTTP/1.1";
+
+    http_protocol_one_one(std::unique_ptr<http_resource_factory>&& factory) noexcept;
+    virtual ~http_protocol_one_one() = default;
 
     /// \brief Creates a basic response for a specific protocol version.
     ///
@@ -22,13 +30,16 @@ public:
     virtual void execute(const http_service_info& info, const http_request& request, http_response& response) override;
 
 protected:
-    virtual void execute_options(const http_service_info& info, const http_request& request, http_response& response);
-    virtual void execute_get(const http_service_info& info, const http_request& request, http_response& response);
-    virtual void execute_head(const http_service_info& info, const http_request& request, http_response& response);
-    virtual void execute_post(const http_service_info& info, const http_request& request, http_response& response);
-    virtual void execute_put(const http_service_info& info, const http_request& request, http_response& response);
-    virtual void execute_delete(const http_service_info& info, const http_request& request, http_response& response);
-    virtual void execute_trace(const http_service_info& info, const http_request& request, http_response& response);
+    virtual void execute_get(const http_service_info& info, const http_request& request, http_response& response) const;
+    virtual void execute_head(const http_service_info& info, const http_request& request, http_response& response) const;
+
+private:
+    std::string list_implemented_methods() const;
+
+    using execute_fn_signature = void(const http_protocol_one_one* const, const http_service_info&, const http_request&, http_response&);
+
+    std::map<http_constants::method,
+             std::function<execute_fn_signature>> dispatcher_;
 };
 
 #endif

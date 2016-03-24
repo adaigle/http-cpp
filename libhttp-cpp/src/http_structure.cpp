@@ -1,13 +1,13 @@
 #include "http_structure.hpp"
 
 #include <algorithm>
+#include <cstdio>
 #include <ctype.h>
 #include <iostream>
 #include <sstream>
 #include <tuple>
 
 #include <boost/algorithm/string.hpp>
-#include <boost/date_time/local_time/local_time.hpp>
 
 #include "logger.hpp"
 
@@ -76,17 +76,30 @@ http_constants::status_class http_constants::get_status_class(http_constants::st
 	return static_cast<http_constants::status_class>(first_digit);
 }
 
-// Construct and HTTP-date as an rfc1123-date
-std::string http_constants::http_date()
+std::string http_constants::httptime(const std::tm* timeptr)
 {
-    std::stringstream date_builder;
+	// Construct and HTTP-date as an rfc1123-date
+	static const char wday_name[][4] = {
+		"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
+	};
+	static const char mon_name[][4] = {
+		"Jan", "Feb", "Mar", "Apr", "May", "Jun",
+		"Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+	};
 
-    boost::local_time::local_date_time t(boost::local_time::local_sec_clock::local_time(boost::local_time::time_zone_ptr()));
-    boost::local_time::local_time_facet* lf(new boost::local_time::local_time_facet("%a, %d %b %Y %H:%M:%S GMT"));
-    date_builder.imbue(std::locale(date_builder.getloc(), lf));
-    date_builder << t;
+  	static char result[29];
+	std::sprintf(result, "%.3s, %2d %.3s %d %.2d:%.2d:%.2d GMT",
+			wday_name[timeptr->tm_wday],
+			timeptr->tm_mday,
+			mon_name[timeptr->tm_mon],
+			1900 + timeptr->tm_year,
+			timeptr->tm_hour, timeptr->tm_min, timeptr->tm_sec);
+	return std::string(result);
+}
 
-    return date_builder.str();
+std::string http_constants::http_date(std::time_t time)
+{
+    return httptime(localtime(&time));
 }
 
 http_request::parsing_status http_request::parse(const std::string& frame)

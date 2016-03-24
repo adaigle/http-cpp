@@ -5,11 +5,16 @@
 #include <string>
 #include <unordered_map>
 
-#include "http_structure.hpp"
+#include "http_structure.h"
+
+// Forward declaration of the http resource factory.
+class http_resource_factory;
 
 class http_protocol_handler
 {
 public:
+    virtual ~http_protocol_handler() = default;
+
     /// \brief Obtain a handle to a version-specific executor of the http protocol.
     /// make_handler lazily creates a single static instance of the concrete strategy
     /// used to answer to requests of a specific profocol version. When the concrete
@@ -18,7 +23,7 @@ public:
     ///
     /// \param http_version The string matching the http version. e.g.: 'HTTP/1.1'.
     /// \returns A pointer to the protocol handler or nullptr if the version is invalid.
-    static http_protocol_handler* make_handler(const std::string& http_version) noexcept;
+    static http_protocol_handler* make_handler(const std::string& service_path, const std::string& http_version) noexcept;
 
     /// \brief Creates a basic response for a specific protocol version.
     ///
@@ -33,9 +38,14 @@ public:
     /// \param response The response to populate.
     virtual void execute(const http_service_info& info, const http_request& request, http_response& response) = 0;
 
+protected:
+    http_protocol_handler(std::unique_ptr<http_resource_factory>&& factory) noexcept;
+
+    std::unique_ptr<http_resource_factory> resource_factory_;
+
 private:
     template <typename T>
-    static http_protocol_handler* make_handle_impl() noexcept;
+    static http_protocol_handler* make_handle_impl(const std::string& service_path) noexcept;
 
     static std::unordered_map<std::string, std::unique_ptr<http_protocol_handler>> protocol_handler_cache;
 };
