@@ -8,9 +8,10 @@ int main(int argc, char* argv[])
     logger::info() << "Starting the server..." << logger::endl;
 
     http_server server;
-    server.connect(8081, "hello_world", "my_localhost_website");
-    server.connect(8082, "8082", "my_second_website");
-    server.connect(8083, "other_website", "my_second_website");
+    void connect(const std::string& website_path, const std::string& host, uint16_t port = 80, const std::string& website_name = "");
+
+    server.connect("hello_world", "localhost", 8081);
+    server.connect("librest.dll", "localhost", 8082);
     server.run();
 
     return 0;

@@ -118,7 +118,10 @@ void http_worker::handle_request(zmq::socket_t& socket)
         ///////////////////////////////////////////////////
         // 2. Detect the website based on the host/port of the requets-URI.
         const http_request request = http_service::parse_request(frame);
-        const http_website& website = find_website(8081, request);
+        const http_website& website = find_website(request);
+
+        logger::info() << "website: " << website.host_.name << " " << website.host_.port << logger::endl;
+
 
         ///////////////////////////////////////////////////
         // 3. Execute the http request.
@@ -157,9 +160,17 @@ void http_worker::handle_request(zmq::socket_t& socket)
     }
 }
 
-const http_website& http_worker::find_website(uint16_t port, const http_request& request) const
+const http_website& http_worker::find_website(const http_request& request) const
 {
-    auto iter = std::find_if(std::cbegin(websites_), std::cend(websites_),
-                             [&port](const http_website& w) { return w.port_ == port; });
+    const std::string host = http_service::extract_host(request);
+
+    auto iter = std::find(std::cbegin(websites_), std::cend(websites_), host);
+    if (iter == std::cend(websites_)) {
+        logger::warn() << "Unknown website '" << host << "' among: " << logger::endl;
+        for (const auto& website : websites_)
+            logger::warn() << website.host_.name << " " << website.host_.port << logger::endl;
+        throw http_invalid_request("Unknown website...");
+    }
+
     return *iter;
 }

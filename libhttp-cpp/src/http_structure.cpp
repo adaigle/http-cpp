@@ -145,9 +145,14 @@ http_request::parsing_status http_request::parse(const std::string& frame)
 		const size_t colon_position = line.find_first_of(":");
 		if (colon_position == std::string::npos)
 			continue;
+		if (line.length() < 2)
+			continue;
+
+		if (line.back() == '\n') line.pop_back();
+		if (line.back() == '\r') line.pop_back();
 
 		std::string header(line.substr(0, colon_position));
-		std::string property(line.substr(colon_position + 1));
+		std::string property(line.substr(colon_position + 2));
 
 		const auto general_iter =
 		    std::find(std::cbegin(http_constants::GENERAL_HEADER), std::cend(http_constants::GENERAL_HEADER), header);
@@ -158,13 +163,14 @@ http_request::parsing_status http_request::parse(const std::string& frame)
 
 		if (general_iter != std::cend(http_constants::GENERAL_HEADER)) {
 			general_header.emplace(header, property);
-		}
-		else if (general_iter != std::cend(http_constants::REQUEST_HEADER)) {
+		} else if (request_iter != std::cend(http_constants::REQUEST_HEADER)) {
 			request_header.emplace(header, property);
-		}
-		else {
+		} else if (entity_iter  != std::cend(http_constants::REQUEST_HEADER)) {
 			entity_header.emplace(header, property);
+		} else {
+			assert(false);
 		}
+
 	}
 
 	///////////////////////////////////////////////////////

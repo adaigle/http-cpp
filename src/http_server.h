@@ -20,7 +20,13 @@ public:
     http_server(const http_server&) = delete;
     http_server& operator=(const http_server&) = delete;
 
-    void connect(uint16_t port, const std::string& website_root, const std::string& website_name = "");
+    /// \brief Connect the webserver to an endpoint corresponding to a website.
+    ///
+    /// \param website_path Path to the website's folder / web service's dynamic library.
+    /// \param host_name The host name of the website. Note that this field is mandatory and used to filter the website.
+    /// \param port The port to listen to. By default use port 80.
+    /// \param website_name Friendly name for the website. Only used internally.
+    void connect(const std::string& website_path, const std::string& host_name, const uint16_t port = 80, const std::string& website_name = "");
     void run();
 
 private:

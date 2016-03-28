@@ -4,6 +4,8 @@
 #include <memory>
 #include <string>
 
+#include <boost/function.hpp>
+
 #if defined(HAVE_LIBMAGIC)
 #  if !defined(LIBMAGIC_MAGIC_FILE)
 #    error "The path to libmagic folder must be provided."
@@ -27,6 +29,8 @@ class http_resource;
 class http_resource_factory
 {
 public:
+    virtual ~http_resource_factory() = default;
+
     /// \brief Fetch the resource content in a stream format.
     ///
     /// \param stream The stream to output the content to.
@@ -35,18 +39,19 @@ public:
     /// \brief Fetch the resource content in a stream format.
     ///
     /// \param stream The stream to output the content to.
-    virtual std::unique_ptr<http_resource> create_handle(const std::string& request_uri) noexcept = 0;
+    virtual std::unique_ptr<http_resource> create_handle(const std::string& request_uri) const noexcept = 0;
 };
 
 class http_filesystem_resource_factory : public http_resource_factory
 {
 public:
     http_filesystem_resource_factory(const std::string& virtual_path) noexcept;
+    virtual ~http_filesystem_resource_factory() = default;
 
     /// \brief Fetch the resource content in a stream format.
     ///
     /// \param stream The stream to output the content to.
-    virtual std::unique_ptr<http_resource> create_handle(const std::string& request_uri) noexcept override;
+    virtual std::unique_ptr<http_resource> create_handle(const std::string& request_uri) const noexcept override;
 protected:
     const std::string virtual_path_;
     static magic_up up_magic_handle_;
@@ -55,13 +60,19 @@ protected:
 class http_external_resource_factory : public http_resource_factory
 {
 public:
+    http_external_resource_factory(const std::string& library_path);
+    virtual ~http_external_resource_factory() = default;
+
     /// \brief Fetch the resource content in a stream format.
     ///
     /// \param stream The stream to output the content to.
-    virtual std::unique_ptr<http_resource> create_handle(const std::string& request_uri) noexcept override;
+    virtual std::unique_ptr<http_resource> create_handle(const std::string& request_uri) const noexcept override;
 
 protected:
-    const std::string path_to_dll;
+    using handle_creator_fn_t = http_resource*(const std::string);
+
+    boost::function<handle_creator_fn_t> creator_;
+    const std::string library_path_;
 };
 
 #endif

@@ -36,6 +36,11 @@ if(${Boost_FOUND})
 endif()
 
 ###########################################################
+# Include boost.dll
+add_library(boost-dll INTERFACE IMPORTED)
+set_property(TARGET boost-dll PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/../ext/dll/include")
+
+###########################################################
 # Include libmagic
 set(libmagic_ROOT_DIR $ENV{libmagic_ROOT})
 find_package(libmagic)
@@ -123,6 +128,7 @@ target_link_libraries(libhttp-cpp
     boost
     boost-system
     boost-filesystem
+    boost-dll
     libmagic
     ${THREADING_LIBRARY}
     ${STANDARD_LIBRARY}

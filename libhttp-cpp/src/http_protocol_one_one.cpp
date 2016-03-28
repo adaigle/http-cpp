@@ -13,8 +13,8 @@
 
 constexpr decltype(http_protocol_one_one::http_version) http_protocol_one_one::http_version;
 
-http_protocol_one_one::http_protocol_one_one(std::unique_ptr<http_resource_factory>&& factory) noexcept :
-    http_protocol_handler(std::move(factory))
+http_protocol_one_one::http_protocol_one_one() noexcept :
+    http_protocol_handler()
 {
     // Add supported http method.
     dispatcher_.emplace(http_constants::method::m_get, &http_protocol_one_one::execute_get);
@@ -30,23 +30,22 @@ http_response http_protocol_one_one::make_response() noexcept
     return response;
 }
 
-void http_protocol_one_one::execute(const http_service_info& info, const http_request& request, http_response& response)
+void http_protocol_one_one::execute(const http_resource_factory* const resource_factory, const http_request& request, http_response& response)
 {
     const auto it = dispatcher_.find(request.method);
     if (it != dispatcher_.cend()) {
         assert(it->second);
-        it->second(this, info, request, response);
+        it->second(this, resource_factory, request, response);
     } else {
         response.status_code = http_constants::status::http_not_implemented;
         response.entity_header["Allow"] = list_implemented_methods();
     }
 }
 
-void http_protocol_one_one::execute_get(const http_service_info& info, const http_request& request, http_response& response) const
+void http_protocol_one_one::execute_get(const http_resource_factory* const resource_factory, const http_request& request, http_response& response) const
 {
-    std::string path = info.path + request.request_uri;
     try {
-        std::unique_ptr<http_resource> resource = resource_factory_->create_handle(request.request_uri);
+        std::unique_ptr<http_resource> resource = resource_factory->create_handle(request.request_uri);
         if (!resource) {
             response.status_code = http_constants::status::http_not_found;
             return;
@@ -68,11 +67,10 @@ void http_protocol_one_one::execute_get(const http_service_info& info, const htt
     }
 }
 
-void http_protocol_one_one::execute_head(const http_service_info& info, const http_request& request, http_response& response) const
+void http_protocol_one_one::execute_head(const http_resource_factory* const resource_factory, const http_request& request, http_response& response) const
 {
-    std::string path = info.path + request.request_uri;
     try {
-        std::unique_ptr<http_resource> resource = resource_factory_->create_handle(request.request_uri);
+        std::unique_ptr<http_resource> resource = resource_factory->create_handle(request.request_uri);
         if (!resource) {
             response.status_code = http_constants::status::http_not_found;
             return;

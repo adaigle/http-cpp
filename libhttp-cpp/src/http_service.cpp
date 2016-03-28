@@ -8,13 +8,14 @@
 
 #include "http_exception.h"
 #include "http_protocol_handler.h"
+#include "http_resource_factory.h"
 
 #include "logger.hpp"
 
-http_service::http_service(const std::string& name, const std::string& host, const std::string& path) :
-    name_(name), host_(host), path_(path)
+http_service::http_service(const std::string& service_path, const std::string& host, const std::string& name /* = "" */) :
+    name_(name), host_(host), service_path_(service_path), resource_factory_(http_resource_factory::create_resource_factory(service_path))
 {
-    environment.path = path;
+    environment.path = service_path_;
     environment.host = host;
 }
 
@@ -60,13 +61,13 @@ http_response http_service::execute(const http_request& request) const
     const std::string host = http_service::extract_host(request);
 
     try {
-        http_protocol_handler* handler = http_protocol_handler::make_handler(path_, request.http_version);
+        http_protocol_handler* handler = http_protocol_handler::make_handler(request.http_version);
         if (handler == nullptr) {
             // TODO: Assume that a wrong/not-implemented http version is a bad request for now.
             response.status_code = http_constants::status::http_bad_request;
         } else {
             response = handler->make_response();
-            handler->execute(environment, request, response);
+            handler->execute(resource_factory_.get(), request, response);
         }
     } catch (std::exception& e) {
         // Resource cannot be loaded, send out a 500 (Internal Server Error) response.
@@ -80,9 +81,6 @@ http_response http_service::execute(const http_request& request) const
 
 std::string http_service::extract_host(const http_request& request)
 {
-    const auto host_it = request.request_header.find("Host");
-    std::string host = (host_it != request.request_header.cend()) ? host_it->second : "";
-
     // Check if the Request-URI is an absoluteURI of the following form:
     // "http:" "//" host [ ":" port ] [ abs_path [ "?" query ]]
     static std::regex absolute_uri_regex("http:\\/\\/([^\\/:]+)(:([0-9]+))?([^\\?]*)(\\?(.*))?", std::regex_constants::ECMAScript | std::regex_constants::optimize);
@@ -108,14 +106,22 @@ std::string http_service::extract_host(const http_request& request)
     }
 
     if (std::regex_match(request.request_uri, matches, absolute_path_regex)) {
+        // Make sure that the host header exists.
+        const auto host_it = request.request_header.find("Host");
+        if (host_it == request.request_header.cend()) {
+            logger::warn() << "The 'Host' header must be provided for absolute-path requests." << logger::endl;
+            throw http_invalid_request("'Host' header is missing.");
+        }
+
         const std::string raw_abs_path = matches[1];
         const std::string raw_query = matches[4];
 
         logger::trace() << "Absolute path detected: " << logger::endl;
+        logger::trace() << " - Host: " << host_it->second << logger::endl;
         logger::trace() << " - Abs_path: " << raw_abs_path << logger::endl;
         logger::trace() << " - Query: " << raw_query << logger::endl;
 
-        return host;
+        return host_it->second;
     }
 
     if (request.request_uri == "*") {

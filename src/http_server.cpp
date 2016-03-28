@@ -41,18 +41,19 @@ http_server::http_server(uint8_t io_threads) :
     }
 }
 
-void http_server::connect(uint16_t port, const std::string& website_root, const std::string& website_name)
+void http_server::connect(const std::string& website_path, const std::string& host_name,
+                          const uint16_t port /* = 80 */, const std::string& website_name /* = "" */)
 {
-    logger::trace() << "Connecting to port " << port << " for website '" << website_name << "'..." << logger::endl;
+    logger::trace() << "Connecting to port " << port << " with hostname '" << host_name << "'..." << logger::endl;
 
     // TODO: Check if the port is already used.
 
     // Check if the website directory exists.
-    if (!boost::filesystem::is_directory(website_root))
+    if (!boost::filesystem::exists(website_path))
         throw std::invalid_argument("Invalid website root directory. The directory must exist on the filesystem.");
 
     try {
-        const auto insert_iter = websites_.emplace(port, website_root, website_name);
+        const auto insert_iter = websites_.emplace(website_path, http_website::host{host_name, port}, website_name);
         if (!insert_iter.second) {
             throw std::invalid_argument("Invalid website identifier. Is the port and name combination already used ?");
         }

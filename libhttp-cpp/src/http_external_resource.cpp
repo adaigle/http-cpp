@@ -1,5 +1,7 @@
 #include "http_external_resource.h"
 
+#include <boost/dll/import.hpp>
+
 http_external_resource::http_external_resource(const std::string& request_uri) :
     http_resource(request_uri)
 {
