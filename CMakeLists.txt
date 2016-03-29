@@ -71,6 +71,7 @@ endif()
 
 add_subdirectory(libhttp-cpp)
 add_subdirectory(librest)
+add_subdirectory(example)
 
 ##############################################################################
 # Create executable

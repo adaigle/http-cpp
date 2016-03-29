@@ -3,12 +3,14 @@
 
 #include <memory>
 #include <string>
-#include <unordered_map>
 
 #include "http_structure.h"
 
 // Forward declaration of the http resource factory.
 class http_resource_factory;
+
+// Forward declaration of the http protocol handler cache.
+class http_protocol_handler_cache;
 
 /// \brief Provide parsing and execution capacities of http request/response.
 ///
@@ -23,8 +25,7 @@ public:
     http_service(const std::string& service_path, const std::string& host, const std::string& name = "");
 
     /// \brief Default destructor.
-    ///
-    ~http_service() = default;
+    ~http_service();
 
     /// \brief Parse an http request from a string.
     ///
@@ -65,10 +66,8 @@ protected:
     const std::string host_;
     const std::string service_path_;
 
-    // TODO: make std::unique_ptr
-    std::shared_ptr<http_resource_factory> resource_factory_;
-
-    http_service_info environment;
+    std::unique_ptr<http_resource_factory> resource_factory_;
+    static std::unique_ptr<http_protocol_handler_cache> protocol_handler_cache_;
 };
 
 #endif

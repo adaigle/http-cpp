@@ -86,7 +86,6 @@ http_external_resource_factory::http_external_resource_factory(const std::string
         "create_handle",
         boost::dll::load_mode::append_decorations
     );
-    logger::info() << "Done!" << logger::endl;
 }
 
 std::unique_ptr<http_resource> http_external_resource_factory::create_handle(const std::string& request_uri) const noexcept

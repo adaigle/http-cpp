@@ -7,19 +7,16 @@
 #include "logger.hpp"
 
 template <typename T>
-http_protocol_handler* http_protocol_handler::make_handle_impl() noexcept
+http_protocol_handler* http_protocol_handler::make_handle_impl(http_protocol_handler_cache& cache) noexcept
 {
-    const auto it = protocol_handler_cache.find(T::http_version);
-    if (it != protocol_handler_cache.cend()) {
-        http_protocol_handler* raw_ptr = it->second.get();
+    if (cache.contains(T::http_version)) {
+        http_protocol_handler* raw_ptr = cache.get(T::http_version);
         assert(raw_ptr != nullptr);
         return raw_ptr;
     }
 
     try {
-        const auto result = protocol_handler_cache.emplace(T::http_version, std::unique_ptr<http_protocol_handler>(new T));
-        assert(result.second);
-        http_protocol_handler* raw_ptr = result.first->second.get();
+        http_protocol_handler* raw_ptr = cache.insert(T::http_version, std::make_unique<T>());
         assert(raw_ptr != nullptr);
         return raw_ptr;
     } catch(std::exception& e) {

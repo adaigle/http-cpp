@@ -21,7 +21,7 @@ public:
     virtual void fetch_resource_content(std::ostream& stream) = 0;
 
 protected:
-    http_resource(const std::string& request_uri);
+    http_resource(const std::string& request_uri) : request_uri_(request_uri) {}
 
     const std::string request_uri_;
 };

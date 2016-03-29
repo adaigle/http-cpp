@@ -88,21 +88,24 @@ add_library(libhttp-cpp SHARED
     include/http_exception.h
     include/http_service.h
     include/http_service.hpp
+    include/http_constants.h
     include/http_structure.h
     include/http_structure.hpp
+    include/interface/http_resource.h
     src/http_service.cpp
     src/http_structure.cpp
+    src/http_constants.cpp
     src/http_protocol_handler.h
     src/http_protocol_handler.hpp
     src/http_protocol_handler.cpp
+    src/http_protocol_handler_cache.h
+    src/http_protocol_handler_cache.cpp
     src/http_protocol_one_one.h
     src/http_protocol_one_one.cpp
     src/http_protocol_one_zero.h
     src/http_protocol_one_zero.cpp
     src/http_resource_factory.h
     src/http_resource_factory.cpp
-    src/http_resource.h
-    src/http_resource.cpp
     src/http_filesystem_resource.h
     src/http_filesystem_resource.cpp
     src/http_directory_listing.h
@@ -115,6 +118,7 @@ add_library(libhttp-cpp SHARED
 set_property(TARGET libhttp-cpp PROPERTY PREFIX "")
 set_property(TARGET libhttp-cpp APPEND PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/include")
 set_property(TARGET libhttp-cpp APPEND PROPERTY INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/include")
+set_property(TARGET libhttp-cpp APPEND PROPERTY INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/include/interface")
 
 if(${libmagic_FOUND})
     set_property(TARGET libhttp-cpp APPEND PROPERTY COMPILE_DEFINITIONS HAVE_LIBMAGIC)

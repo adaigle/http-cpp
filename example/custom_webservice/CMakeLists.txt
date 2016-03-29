@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
+#project(http_example_custom VERSION 0.1 LANGUAGES CXX)
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
@@ -39,20 +40,29 @@ endif()
 # Create executable
 ##############################################################################
 
-add_library(librest SHARED
+add_library(custom_webservice SHARED EXCLUDE_FROM_ALL
     "${PROJECT_SOURCE_DIR}/libhttp-cpp/include/interface/http_resource.h"
-    include/rest_resource.h
-    src/rest_resource.cpp
+    include/custom_resource.h
+    src/custom_resource.cpp
 )
-set_property(TARGET librest PROPERTY PREFIX "")
-set_property(TARGET librest APPEND PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/include")
-set_property(TARGET librest APPEND PROPERTY INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/include")
-set_property(TARGET librest APPEND PROPERTY INCLUDE_DIRECTORIES "${PROJECT_SOURCE_DIR}/libhttp-cpp/include")
+add_dependencies(examples custom_webservice)
+
+get_property(EXAMPLE_ARCHIVE_OUTPUT_DIRECTORY TARGET examples PROPERTY ARCHIVE_OUTPUT_DIRECTORY)
+set_property(TARGET custom_webservice PROPERTY ARCHIVE_OUTPUT_DIRECTORY "${EXAMPLE_ARCHIVE_OUTPUT_DIRECTORY}")
+get_property(EXAMPLE_RUNTIME_OUTPUT_DIRECTORY TARGET examples PROPERTY RUNTIME_OUTPUT_DIRECTORY)
+set_property(TARGET custom_webservice PROPERTY RUNTIME_OUTPUT_DIRECTORY "${EXAMPLE_RUNTIME_OUTPUT_DIRECTORY}")
+get_property(EXAMPLE_LIBRARY_OUTPUT_DIRECTORY TARGET examples PROPERTY LIBRARY_OUTPUT_DIRECTORY)
+set_property(TARGET custom_webservice PROPERTY LIBRARY_OUTPUT_DIRECTORY "${EXAMPLE_LIBRARY_OUTPUT_DIRECTORY}")
+
+set_property(TARGET custom_webservice PROPERTY PREFIX "")
+set_property(TARGET custom_webservice APPEND PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/include")
+set_property(TARGET custom_webservice APPEND PROPERTY INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/include")
+set_property(TARGET custom_webservice APPEND PROPERTY INCLUDE_DIRECTORIES "${PROJECT_SOURCE_DIR}/libhttp-cpp/include")
 
 # Compiler requirement for the library.
-set_target_properties(librest PROPERTIES CXX_STANDARD 14)
+set_target_properties(custom_webservice PROPERTIES CXX_STANDARD 14)
 
-target_link_libraries(librest
+target_link_libraries(custom_webservice
     boost
     boost-dll
     ${THREADING_LIBRARY}

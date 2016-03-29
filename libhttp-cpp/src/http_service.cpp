@@ -1,32 +1,57 @@
-#include "http_service.hpp"
-#include "http_structure.hpp"
+///////////////////////////////////////////////////////////
+// Forward declarations
+#include "http_resource_factory.h"
+#include "http_protocol_handler_cache.h"
+#include "http_protocol_handler.h"
 
+///////////////////////////////////////////////////////////
+// Class declaration
+#include "http_service.hpp"
+
+///////////////////////////////////////////////////////////
+// Other includes
+#include "http_structure.hpp"
+#include "http_constants.h"
+
+#include <cassert>
 #include <exception>
 #include <regex>
 #include <sstream>
 #include <string>
 
 #include "http_exception.h"
-#include "http_protocol_handler.h"
-#include "http_resource_factory.h"
 
 #include "logger.hpp"
 
+std::unique_ptr<http_protocol_handler_cache> http_service::protocol_handler_cache_(std::make_unique<http_protocol_handler_cache>());
+
 http_service::http_service(const std::string& service_path, const std::string& host, const std::string& name /* = "" */) :
-    name_(name), host_(host), service_path_(service_path), resource_factory_(http_resource_factory::create_resource_factory(service_path))
+    name_(name), host_(host), service_path_(service_path),
+    resource_factory_(http_resource_factory::create_resource_factory(service_path))
 {
-    environment.path = service_path_;
-    environment.host = host;
 }
+
+// The destructor need to be defined in the .cpp file because at this point, the declaration of 'http_resource_factory'
+// is known for the unique_ptr stored in the class.
+http_service::~http_service() = default;
 
 http_request http_service::parse_request(const std::string& request)
 {
     http_request structured_request;
-    http_request::parsing_status code = structured_request.parse(request);
+    const std::string http_version = http_protocol_handler::extract_http_version(request);
 
-    // TODO: Handle parsing return code.
-    if (code != http_request::parsing_status::success) {
+    assert(protocol_handler_cache_);
+    http_protocol_handler* handler = http_protocol_handler::get_handler(*protocol_handler_cache_.get(), http_version);
+    if (handler == nullptr) {
+        // TODO: Assume that a wrong/not-implemented http version is a bad request for now.
         throw http_invalid_request("Invalid request.");
+    } else {
+        http_request::parsing_status code = handler->parse_request(request, structured_request);
+
+        // TODO: Handle parsing return code.
+        if (code != http_request::parsing_status::success) {
+            throw http_invalid_request("Invalid request.");
+        }
     }
 
     return structured_request;
@@ -56,12 +81,9 @@ http_response http_service::execute(const http_request& request) const
 {
     http_response response;
 
-    // Host checking is handled by the protocol handler as various version of the http
-    // protocol have different requirement.
-    const std::string host = http_service::extract_host(request);
-
     try {
-        http_protocol_handler* handler = http_protocol_handler::make_handler(request.http_version);
+        assert(protocol_handler_cache_);
+        http_protocol_handler* handler = http_protocol_handler::get_handler(*protocol_handler_cache_.get(), request.http_version);
         if (handler == nullptr) {
             // TODO: Assume that a wrong/not-implemented http version is a bad request for now.
             response.status_code = http_constants::status::http_bad_request;

@@ -13,6 +13,12 @@ http_protocol_one_zero::http_protocol_one_zero() noexcept :
 
 }
 
+http_request::parsing_status http_protocol_one_zero::parse_request(const std::string& request, http_request& structured_request) noexcept
+{
+    // TODO: Implement the parsing of an HTTP 1.0 request.
+    return http_request::parsing_status::success;
+}
+
 http_response http_protocol_one_zero::make_response() noexcept
 {
     http_response response(http_version);
