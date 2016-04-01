@@ -84,6 +84,12 @@ add_custom_target(check
 # Create executable
 ##############################################################################
 
+add_library(libhttp-interface STATIC
+    include/interface/http_resource.h
+)
+set_property(TARGET libhttp-interface PROPERTY LINKER_LANGUAGE CXX)
+set_property(TARGET libhttp-interface APPEND PROPERTY INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/include/interface")
+
 add_library(libhttp-cpp SHARED
     include/http_exception.h
     include/http_service.h
@@ -91,7 +97,6 @@ add_library(libhttp-cpp SHARED
     include/http_constants.h
     include/http_structure.h
     include/http_structure.hpp
-    include/interface/http_resource.h
     src/http_service.cpp
     src/http_structure.cpp
     src/http_constants.cpp
@@ -110,15 +115,12 @@ add_library(libhttp-cpp SHARED
     src/http_filesystem_resource.cpp
     src/http_directory_listing.h
     src/http_directory_listing.cpp
-    src/http_external_resource.h
-    src/http_external_resource.cpp
     src/logger.hpp
     src/logger.cpp
 )
 set_property(TARGET libhttp-cpp PROPERTY PREFIX "")
 set_property(TARGET libhttp-cpp APPEND PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/include")
 set_property(TARGET libhttp-cpp APPEND PROPERTY INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/include")
-set_property(TARGET libhttp-cpp APPEND PROPERTY INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/include/interface")
 
 if(${libmagic_FOUND})
     set_property(TARGET libhttp-cpp APPEND PROPERTY COMPILE_DEFINITIONS HAVE_LIBMAGIC)
@@ -134,6 +136,7 @@ target_link_libraries(libhttp-cpp
     boost-filesystem
     boost-dll
     libmagic
+    libhttp-interface
     ${THREADING_LIBRARY}
     ${STANDARD_LIBRARY}
 )

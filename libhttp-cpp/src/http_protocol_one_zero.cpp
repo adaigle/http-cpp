@@ -1,6 +1,6 @@
 #include "http_protocol_one_zero.h"
 
-#include "http_resource.h"
+#include "interface/http_resource.h"
 #include "http_resource_factory.h"
 #include "http_service.h"
 

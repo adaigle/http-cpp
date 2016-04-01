@@ -11,7 +11,7 @@ int main(int argc, char* argv[])
     void connect(const std::string& website_path, const std::string& host, uint16_t port = 80, const std::string& website_name = "");
 
     server.connect("hello_world", "localhost", 8081);
-    server.connect("librest.dll", "localhost", 8082);
+    server.connect("example/rest_webservice.dll", "localhost", 8082);
     server.run();
 
     return 0;

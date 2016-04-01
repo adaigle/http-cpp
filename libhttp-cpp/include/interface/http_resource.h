@@ -5,20 +5,18 @@
 #include <ostream>
 #include <string>
 
+#include "http_structure.h"
+
+/// \brief Base definition of an http resource.
+///
 class http_resource
 {
 public:
-    using header_t = std::map<std::string, std::string>;
-
-    /// \brief Fetch the resource content in a stream format..
+    /// \brief Execute the request on the resource.
     ///
-    /// \param stream The stream to output the content to.
-    virtual header_t fetch_resource_header() = 0;
-
-    /// \brief Fetch the resource content in a stream format..
-    ///
-    /// \param stream The stream to output the content to.
-    virtual void fetch_resource_content(std::ostream& stream) = 0;
+    /// \param request The request to execute.
+    /// \param response The response to fill in.
+    virtual void execute(const http_request& request, http_response& response) = 0;
 
 protected:
     http_resource(const std::string& request_uri) : request_uri_(request_uri) {}

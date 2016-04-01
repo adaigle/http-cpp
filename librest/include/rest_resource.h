@@ -2,31 +2,32 @@
 #define REST_RESOURCE_H
 
 #include "interface/http_resource.h"
+#include "http_structure.h"
 
+#include <cassert>
+#include <functional>
 #include <string>
 
 #include <boost/dll/alias.hpp>
 
 class rest_resource : public http_resource
 {
+    using function_signature = void(const http_request&, http_response&);
+
 public:
-    rest_resource(const std::string& request_uri);
+    rest_resource(const std::string& request_uri, std::function<function_signature> fn) :
+        http_resource(request_uri), fn_(fn) {}
 
-    /// \brief Fetch the resource content in a stream format..
-    ///
-    /// \param stream The stream to output the content to.
-    virtual header_t fetch_resource_header() override;
-
-    /// \brief Fetch the resource content in a stream format..
-    ///
-    /// \param stream The stream to output the content to.
-    virtual void fetch_resource_content(std::ostream& stream) override;
-
-    static http_resource* create_handle(const std::string str) {
-        return new rest_resource(str);
+    void execute(const http_request& request, http_response& response) override final {
+        if (fn_) {
+            fn_(request, response);
+        } else {
+            response.status_code = http_constants::status::http_not_found;
+        }
     }
-};
 
-BOOST_DLL_ALIAS(rest_resource::create_handle, create_handle);
+private:
+    std::function<function_signature> fn_;
+};
 
 #endif

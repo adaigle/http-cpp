@@ -41,9 +41,8 @@ endif()
 ##############################################################################
 
 add_library(rest_webservice SHARED EXCLUDE_FROM_ALL
-    "${PROJECT_SOURCE_DIR}/libhttp-cpp/include/interface/http_resource.h"
-    include/rest_resource.h
-    src/rest_resource.cpp
+    include/service.h
+    src/service.cpp
 )
 add_dependencies(examples rest_webservice)
 get_property(EXAMPLE_ARCHIVE_OUTPUT_DIRECTORY TARGET examples PROPERTY ARCHIVE_OUTPUT_DIRECTORY)
@@ -64,6 +63,7 @@ set_target_properties(rest_webservice PROPERTIES CXX_STANDARD 14)
 target_link_libraries(rest_webservice
     boost
     boost-dll
+    librest
     ${THREADING_LIBRARY}
     ${STANDARD_LIBRARY}
 )

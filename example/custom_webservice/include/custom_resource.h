@@ -12,15 +12,7 @@ class custom_resource : public http_resource
 public:
     custom_resource(const std::string& request_uri);
 
-    /// \brief Fetch the resource content in a stream format..
-    ///
-    /// \param stream The stream to output the content to.
-    virtual header_t fetch_resource_header() override;
-
-    /// \brief Fetch the resource content in a stream format..
-    ///
-    /// \param stream The stream to output the content to.
-    virtual void fetch_resource_content(std::ostream& stream) override;
+    virtual void execute(const http_request&, http_response&) override;
 
     static http_resource* create_handle(const std::string str) {
         return new custom_resource(str);

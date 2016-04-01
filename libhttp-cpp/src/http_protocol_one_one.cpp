@@ -5,7 +5,7 @@
 #include <sstream>
 #include <stdexcept>
 
-#include "http_resource.h"
+#include "interface/http_resource.h"
 #include "http_resource_factory.h"
 #include "http_structure.hpp"
 
@@ -130,8 +130,18 @@ void http_protocol_one_one::execute(const http_resource_factory* const resource_
 {
     const auto it = dispatcher_.find(request.method);
     if (it != dispatcher_.cend()) {
-        assert(it->second);
-        it->second(this, resource_factory, request, response);
+        try {
+            std::unique_ptr<http_resource> resource = resource_factory->create_handle(request);
+            if (!resource) {
+                response.status_code = http_constants::status::http_not_found;
+                return;
+            }
+
+            resource->execute(request, response);
+        } catch (std::exception& e) {
+            // Resource cannot be loaded, send out a 404 response.
+            response.status_code = http_constants::status::http_not_found;
+        }
     } else {
         response.status_code = http_constants::status::http_not_implemented;
         response.entity_header["Allow"] = list_implemented_methods();
@@ -141,20 +151,22 @@ void http_protocol_one_one::execute(const http_resource_factory* const resource_
 void http_protocol_one_one::execute_get(const http_resource_factory* const resource_factory, const http_request& request, http_response& response) const
 {
     try {
-        std::unique_ptr<http_resource> resource = resource_factory->create_handle(request.request_uri);
+        std::unique_ptr<http_resource> resource = resource_factory->create_handle(request);
         if (!resource) {
             response.status_code = http_constants::status::http_not_found;
             return;
         }
 
-        const auto header = resource->fetch_resource_header();
+        resource->execute(request, response);
+
+        /*const auto header = resource->fetch_resource_header();
         response.entity_header["Content-Type"] = header.at("Content-Type");
         response.entity_header["Content-Length"] = header.at("Content-Length");
         response.entity_header["Last-Modified"] = header.at("Last-Modified");
 
         std::ostringstream resource_stream;
         resource->fetch_resource_content(resource_stream);
-        response.message_body = resource_stream.str();
+        response.message_body = resource_stream.str();*/
 
         response.status_code = http_constants::status::http_ok;
     } catch (std::exception& e) {
@@ -166,16 +178,18 @@ void http_protocol_one_one::execute_get(const http_resource_factory* const resou
 void http_protocol_one_one::execute_head(const http_resource_factory* const resource_factory, const http_request& request, http_response& response) const
 {
     try {
-        std::unique_ptr<http_resource> resource = resource_factory->create_handle(request.request_uri);
+        std::unique_ptr<http_resource> resource = resource_factory->create_handle(request);
         if (!resource) {
             response.status_code = http_constants::status::http_not_found;
             return;
         }
 
-        const auto header = resource->fetch_resource_header();
+        resource->execute(request, response);
+
+        /*const auto header = resource->fetch_resource_header();
         response.entity_header["Content-Type"] = header.at("Content-Type");
         response.entity_header["Content-Length"] = header.at("Content-Length");
-        response.entity_header["Last-Modified"] = header.at("Last-Modified");
+        response.entity_header["Last-Modified"] = header.at("Last-Modified");*/
 
         response.status_code = http_constants::status::http_ok;
     } catch (std::exception& e) {

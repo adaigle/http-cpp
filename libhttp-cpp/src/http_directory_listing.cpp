@@ -10,7 +10,7 @@ http_directory_listing::http_directory_listing(const std::string& request_uri, m
 
 }
 
-http_resource::header_t http_directory_listing::fetch_resource_header()
+http_filesystem_resource::header_t http_directory_listing::fetch_resource_header()
 {
     header_t header;
     header["Content-Type"] = "";

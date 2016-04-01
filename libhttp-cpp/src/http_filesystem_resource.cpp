@@ -4,9 +4,9 @@
 #include <ios>
 #include <limits>
 
-#include <boost/filesystem.hpp>
+#include "http_constants.h"
 
-#include "http_structure.h"
+#include <boost/filesystem.hpp>
 
 #include "logger.hpp"
 
@@ -16,7 +16,21 @@ http_filesystem_resource::http_filesystem_resource(const std::string& request_ur
 
 }
 
-http_resource::header_t http_filesystem_resource::fetch_resource_header()
+void http_filesystem_resource::execute(const http_request& request, http_response& response)
+{
+    const auto header = fetch_resource_header();
+    response.entity_header["Content-Type"] = header.at("Content-Type");
+    response.entity_header["Content-Length"] = header.at("Content-Length");
+    response.entity_header["Last-Modified"] = header.at("Last-Modified");
+
+    if (request.method == http_constants::method::m_get) {
+        std::ostringstream resource_stream;
+        fetch_resource_content(resource_stream);
+        response.message_body = resource_stream.str();
+    }
+}
+
+http_filesystem_resource::header_t http_filesystem_resource::fetch_resource_header()
 {
     header_t header;
 
@@ -28,7 +42,7 @@ http_resource::header_t http_filesystem_resource::fetch_resource_header()
     stream_.seekg(0, std::ios_base::beg);
     assert(length >= 0);
     header["Content-Length"] = std::to_string(static_cast<size_t>(length));
-    
+
     header["Content-Type"] = get_content_type();
     header["Last-Modified"] = http_constants::http_date(boost::filesystem::last_write_time(request_uri_));
 

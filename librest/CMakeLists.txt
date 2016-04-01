@@ -39,15 +39,17 @@ endif()
 # Create executable
 ##############################################################################
 
-add_library(librest SHARED
-    "${PROJECT_SOURCE_DIR}/libhttp-cpp/include/interface/http_resource.h"
+add_library(librest STATIC
+    include/http_router.h
+    include/rest_service.h
     include/rest_resource.h
-    src/rest_resource.cpp
+    src/http_router.cpp
 )
 set_property(TARGET librest PROPERTY PREFIX "")
 set_property(TARGET librest APPEND PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/include")
 set_property(TARGET librest APPEND PROPERTY INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/include")
 set_property(TARGET librest APPEND PROPERTY INCLUDE_DIRECTORIES "${PROJECT_SOURCE_DIR}/libhttp-cpp/include")
+set_property(TARGET librest APPEND PROPERTY IMPORTED_LOCATION "$<TARGET_LINKER_FILE_NAME:librest>")
 
 # Compiler requirement for the library.
 set_target_properties(librest PROPERTIES CXX_STANDARD 14)
@@ -55,6 +57,7 @@ set_target_properties(librest PROPERTIES CXX_STANDARD 14)
 target_link_libraries(librest
     boost
     boost-dll
+    libhttp-interface
     ${THREADING_LIBRARY}
     ${STANDARD_LIBRARY}
 )

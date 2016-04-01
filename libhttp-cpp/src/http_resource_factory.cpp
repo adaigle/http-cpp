@@ -3,10 +3,9 @@
 #include <exception>
 #include <stdexcept>
 
-#include "http_resource.h"
+#include "interface/http_resource.h"
 #include "http_filesystem_resource.h"
 #include "http_directory_listing.h"
-#include "http_external_resource.h"
 
 #include <boost/filesystem.hpp>
 #include <boost/dll/import.hpp>
@@ -52,9 +51,9 @@ http_filesystem_resource_factory::http_filesystem_resource_factory(const std::st
 #endif
 }
 
-std::unique_ptr<http_resource> http_filesystem_resource_factory::create_handle(const std::string& request_uri) const noexcept
+std::unique_ptr<http_resource> http_filesystem_resource_factory::create_handle(const http_request& request) const noexcept
 {
-    std::string path = virtual_path_ + request_uri;
+    std::string path = virtual_path_ + request.request_uri;
     assert(path.length() > 0);
 
     if (boost::filesystem::exists(path)) {
@@ -81,14 +80,18 @@ http_external_resource_factory::http_external_resource_factory(const std::string
     library_path_(library_path)
 {
     // The creator variable needs to stay in scope as long as we have a handle from the external library.
-    creator_ = boost::dll::import_alias<handle_creator_fn_t>(
+    service_creator_ = boost::dll::import_alias<handle_creator_fn_t>(
         library_path,
-        "create_handle",
+        "create_service",
         boost::dll::load_mode::append_decorations
     );
+
+    service_.reset(service_creator_());
+    logger::info() << "Setting up library '" << library_path << "'" << logger::endl;
+    service_->setup();
 }
 
-std::unique_ptr<http_resource> http_external_resource_factory::create_handle(const std::string& request_uri) const noexcept
+std::unique_ptr<http_resource> http_external_resource_factory::create_handle(const http_request& request) const noexcept
 {
-    return std::unique_ptr<http_resource>(creator_(request_uri));
+    return std::unique_ptr<http_resource>(service_->create_resource(request));
 }

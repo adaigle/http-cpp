@@ -41,7 +41,6 @@ endif()
 ##############################################################################
 
 add_library(custom_webservice SHARED EXCLUDE_FROM_ALL
-    "${PROJECT_SOURCE_DIR}/libhttp-cpp/include/interface/http_resource.h"
     include/custom_resource.h
     src/custom_resource.cpp
 )

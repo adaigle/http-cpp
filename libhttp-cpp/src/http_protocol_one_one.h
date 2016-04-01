@@ -31,7 +31,7 @@ public:
     /// \brief Execute the request for the specific protocol version and returns
     /// \note Any exception thrown by the implementation leads to a internal server error.
     ///
-    /// \param env Information about the service settings.
+    /// \param resource_factory Information about the service settings.
     /// \param request An http request ni the http version of the concete instance.
     /// \param response The response to populate.
     virtual void execute(const http_resource_factory* const resource_factory, const http_request& request, http_response& response) override;

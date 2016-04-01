@@ -11,7 +11,7 @@ public:
     /// \brief Fetch the resource content in a stream format..
     ///
     /// \param stream The stream to output the content to.
-    virtual header_t fetch_resource_header() override;
+    virtual http_filesystem_resource::header_t fetch_resource_header() override;
 
     /// \brief Fetch the resource content in a stream format..
     ///
