@@ -11,7 +11,7 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/
 # Include boost
 set(Boost_USE_STATIC_LIBS ON)
 set(Boost_COMPILER "-clang37")
-find_package(Boost 1.60 COMPONENTS system filesystem REQUIRED)
+find_package(Boost COMPONENTS system filesystem REQUIRED)
 if(${Boost_FOUND})
     if (NOT TARGET boost)
         add_library(boost INTERFACE IMPORTED)
@@ -118,6 +118,7 @@ add_library(libhttp-cpp SHARED
     src/logger.hpp
     src/logger.cpp
 )
+
 set_property(TARGET libhttp-cpp PROPERTY PREFIX "")
 set_property(TARGET libhttp-cpp APPEND PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/include")
 set_property(TARGET libhttp-cpp APPEND PROPERTY INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/include")
@@ -128,7 +129,7 @@ if(${libmagic_FOUND})
 endif()
 
 # Compiler requirement for the library.
-set_target_properties(libhttp-cpp PROPERTIES CXX_STANDARD 14)
+set_property(TARGET libhttp-cpp PROPERTY CXX_STANDARD 14)
 
 target_link_libraries(libhttp-cpp
     boost

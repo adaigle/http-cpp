@@ -25,8 +25,8 @@
 
 std::unique_ptr<http_protocol_handler_cache> http_service::protocol_handler_cache_(std::make_unique<http_protocol_handler_cache>());
 
-http_service::http_service(const std::string& service_path, const std::string& host, const std::string& name /* = "" */) :
-    name_(name), host_(host), service_path_(service_path),
+http_service::http_service(const std::string& service_path, host&& host, const std::string& name /* = "" */) :
+    name_(name), host_(std::move(host)), service_path_(service_path),
     resource_factory_(http_resource_factory::create_resource_factory(service_path))
 {
 }
@@ -79,34 +79,82 @@ std::string http_service::execute(const std::string& request) const
 
 http_response http_service::execute(const http_request& request) const
 {
-    http_response response;
+    // Execute an http request as follows:
+    // 1. Identify http version & get handle to parser.
+    // 2. Parse http request.
+    // 3. Identify web service.
+    // 4. Create generic request & response.
+    // 5. Forward request to specific service.
+    // 6. Create http response based on generic response.
 
-    try {
-        assert(protocol_handler_cache_);
-        http_protocol_handler* handler = http_protocol_handler::get_handler(*protocol_handler_cache_.get(), request.http_version);
-        if (handler == nullptr) {
-            // TODO: Assume that a wrong/not-implemented http version is a bad request for now.
-            response.status_code = http_constants::status::http_bad_request;
-        } else {
-            response = handler->make_response();
-            handler->execute(resource_factory_.get(), request, response);
+    // Note: Only http_protocol_* classes are aware of http request/response format.
+    // Note: Concrete services (REST, filesystem, etc..) only deal with generic request/response.
+
+    // At this point, the http request if properly formed already.
+
+    ///////////////////////////////////////////////////
+    // 3. Identify web service.
+    const host detected_host = extract_host(request);
+    if (detected_host != host_)
+        logger::warn() << "Non-matching host, expected '" << host_ << "' but got '" << detected_host << "'." << logger::endl;
+
+    ///////////////////////////////////////////////////
+    // 4. Create generic request & response.
+    generic_request grequest = request.to_generic();
+    generic_response gresponse;
+
+    assert(protocol_handler_cache_);
+    http_protocol_handler* handler = http_protocol_handler::get_handler(*protocol_handler_cache_.get(), request.http_version);
+    if (handler == nullptr) {
+        gresponse.status_code = http_constants::status::http_bad_request;
+    } else {
+        try {
+            ///////////////////////////////////////////////
+            // 5. Forward request to specific service.
+            assert(resource_factory_);
+            std::unique_ptr<http_resource> resource = resource_factory_->create_handle(grequest);
+            if (!resource) {
+                gresponse.status_code = http_constants::status::http_not_found;
+                logger::warn() << "Resource not found." << logger::endl;
+            } else {
+                resource->execute(grequest, gresponse);
+            }
+
+        } catch (http_invalid_request& e) {
+            gresponse.status_code = http_constants::status::http_bad_request;
+            logger::warn() << "Bad request: " << e.what() << logger::endl;
+        } catch (std::exception& e) {
+            // Resource cannot be loaded, send out a 500 (Internal Server Error) response.
+            gresponse.status_code = http_constants::status::http_internal_server_error;
+            logger::error() << "Exception while executing the request:" << logger::endl;
+            logger::error() << e.what() << logger::endl;
         }
-    } catch (std::exception& e) {
-        // Resource cannot be loaded, send out a 500 (Internal Server Error) response.
-        response.status_code = http_constants::status::http_internal_server_error;
-        logger::error() << "Exception while executing the request:" << logger::endl;
-        logger::error() << e.what() << logger::endl;
+    }
+
+    // Assume successful result by default.
+    if (gresponse.status_code == http_constants::status::http_unknown) {
+        gresponse.status_code = http_constants::status::http_ok;
+    }
+
+    ///////////////////////////////////////////////////
+    // 6. Create http response based on generic response.
+    http_response response;
+    if (handler == nullptr) {
+        response.status_code = gresponse.status_code;
+    } else {
+        response = handler->make_response(gresponse);
     }
 
     return response;
 }
 
-std::string http_service::extract_host(const http_request& request)
+http_service::host http_service::extract_host(const http_request& request)
 {
     // Check if the Request-URI is an absoluteURI of the following form:
     // "http:" "//" host [ ":" port ] [ abs_path [ "?" query ]]
     static std::regex absolute_uri_regex("http:\\/\\/([^\\/:]+)(:([0-9]+))?([^\\?]*)(\\?(.*))?", std::regex_constants::ECMAScript | std::regex_constants::optimize);
     static std::regex absolute_path_regex("(\\/([^\\?]*))(\\?(.*))?", std::regex_constants::ECMAScript | std::regex_constants::optimize);
+    static std::regex host_regex("([^\\/:]+)(:([0-9]+))?", std::regex_constants::ECMAScript | std::regex_constants::optimize);
 
     std::smatch matches;
     if (std::regex_match(request.request_uri, matches, absolute_uri_regex)) {
@@ -124,7 +172,13 @@ std::string http_service::extract_host(const http_request& request)
         logger::trace() << " - Abs_path: " << raw_abs_path << logger::endl;
         logger::trace() << " - Query: " << raw_query << logger::endl;
 
-        return raw_host;
+        // Set default port to 80.
+        uint16_t port;
+        std::istringstream ss(raw_port);
+        ss >> port;
+        if (!ss) port = 80;
+
+        return host{raw_host, port};
     }
 
     if (std::regex_match(request.request_uri, matches, absolute_path_regex)) {
@@ -143,16 +197,64 @@ std::string http_service::extract_host(const http_request& request)
         logger::trace() << " - Abs_path: " << raw_abs_path << logger::endl;
         logger::trace() << " - Query: " << raw_query << logger::endl;
 
-        return host_it->second;
+        std::smatch host_matches;
+        if (std::regex_match(host_it->second, host_matches, host_regex)) {
+            const std::string raw_host = host_matches[1];
+            const std::string raw_port = host_matches[3];
+
+            // Set default port to 80.
+            uint16_t port;
+            std::istringstream ss(raw_port);
+            ss >> port;
+            if (!ss) port = 80;
+
+            return host{raw_host, port};
+        }
     }
 
     if (request.request_uri == "*") {
         // Nothing to do.
-        return "*";
+        return host{"*", 80};
     }
 
     // TODO: Handle 'authority'-based request.
 
     logger::warn() << "Invalid Request-URI: " << request.request_uri << logger::endl;
     throw std::invalid_argument("Invalid Request-URI parameter in the request, could not detect a valid format.");
+}
+
+///////////////////////////////////////////////////////////
+// class http_service::host
+///////////////////////////////////////////////////////////
+
+http_service::host::host(const std::string& n, const uint16_t p) noexcept :
+    name(n), port(p)
+{
+}
+
+bool http_service::host::match(const std::string& host) const
+{
+    bool is_match = false;
+
+    is_match |= (host == name);
+
+    const std::string fullhost = name + ":" + std::to_string(port);
+    is_match |= (host == fullhost);
+
+    return is_match;
+}
+
+bool http_service::host::operator==(const host& other) const
+{
+    return port == other.port && name == other.name;
+}
+
+bool http_service::host::operator!=(const host& other) const
+{
+    return port != other.port || name != other.name;
+}
+
+bool http_service::host::operator<(const host& other) const
+{
+    return port < other.port || (port == other.port && name < other.name);
 }

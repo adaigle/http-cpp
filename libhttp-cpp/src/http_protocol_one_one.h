@@ -21,12 +21,12 @@ public:
     /// \param request The entire http request in string.
     /// \param structured_request The structured request to fill during parsing.
     /// \returns The parsing status.
-    virtual http_request::parsing_status parse_request(const std::string& request, http_request& structured_request) noexcept override;
+    virtual http_request::parsing_status parse_request(const std::string& request, http_request& structured_request) const noexcept override;
 
     /// \brief Creates a basic response for a specific protocol version.
     ///
     /// \returns A valid default response for the protocol version.
-    virtual http_response make_response() noexcept override;
+    virtual http_response make_response(const generic_response& gresponse) const noexcept override;
 
     /// \brief Execute the request for the specific protocol version and returns
     /// \note Any exception thrown by the implementation leads to a internal server error.
@@ -34,11 +34,11 @@ public:
     /// \param resource_factory Information about the service settings.
     /// \param request An http request ni the http version of the concete instance.
     /// \param response The response to populate.
-    virtual void execute(const http_resource_factory* const resource_factory, const http_request& request, http_response& response) override;
+    //void execute(const http_resource_factory* const resource_factory, const http_request& request, http_response& response);
 
 protected:
-    virtual void execute_get(const http_resource_factory* const resource_factory, const http_request& request, http_response& response) const;
-    virtual void execute_head(const http_resource_factory* const resource_factory, const http_request& request, http_response& response) const;
+    virtual void execute_get(const http_resource_factory* const resource_factory, const http_request& request, http_response& response) const {};
+    virtual void execute_head(const http_resource_factory* const resource_factory, const http_request& request, http_response& response) const {};
 
 private:
     std::string list_implemented_methods() const;

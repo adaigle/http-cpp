@@ -40,20 +40,12 @@ public:
     /// \param request The entire http request in string.
     /// \param structured_request The structured request to fill during parsing.
     /// \returns The parsing status.
-    virtual http_request::parsing_status parse_request(const std::string& request, http_request& structured_request) noexcept = 0;
+    virtual http_request::parsing_status parse_request(const std::string& request, http_request& structured_request) const noexcept = 0;
 
     /// \brief Creates a basic response for a specific protocol version.
     ///
     /// \returns A valid default response for the protocol version.
-    virtual http_response make_response() noexcept = 0;
-
-    /// \brief Execute the request for the specific protocol version and returns
-    /// \note Any exception thrown by the implementation leads to a internal server error.
-    ///
-    /// \param env Information about the service settings.
-    /// \param request An http request ni the http version of the concete instance.
-    /// \param response The response to populate.
-    virtual void execute(const http_resource_factory* const resource_factory, const http_request& request, http_response& response) = 0;
+    virtual http_response make_response(const generic_response& gresponse) const noexcept = 0;
 
 private:
     template <typename T>

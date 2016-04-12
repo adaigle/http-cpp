@@ -104,7 +104,7 @@ std::function<http_router::dispatch_signature> http_router::get_dispatch(const h
     return it->second;
 }
 
-bool http_router::dispatch(const http_constants::method m, const std::string& dispatch_route, const http_request& request, http_response& response)
+bool http_router::dispatch(const http_constants::method m, const std::string& dispatch_route, const generic_request& request, generic_response& response)
 {
     std::function<dispatch_signature> fn = get_dispatch(m, dispatch_route);
 

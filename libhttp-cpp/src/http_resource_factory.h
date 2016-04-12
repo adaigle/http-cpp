@@ -5,6 +5,7 @@
 #include <string>
 
 #include "interface/http_external_service.h"
+#include "interface/generic_structure.h"
 
 #include <boost/function.hpp>
 
@@ -41,7 +42,7 @@ public:
     /// \brief Fetch the resource content in a stream format.
     ///
     /// \param stream The stream to output the content to.
-    virtual std::unique_ptr<http_resource> create_handle(const http_request& request) const noexcept = 0;
+    virtual std::unique_ptr<http_resource> create_handle(const generic_request& request) const noexcept = 0;
 };
 
 class http_filesystem_resource_factory : public http_resource_factory
@@ -53,7 +54,7 @@ public:
     /// \brief Fetch the resource content in a stream format.
     ///
     /// \param stream The stream to output the content to.
-    virtual std::unique_ptr<http_resource> create_handle(const http_request& request) const noexcept override;
+    virtual std::unique_ptr<http_resource> create_handle(const generic_request& request) const noexcept override;
 protected:
     const std::string virtual_path_;
     static magic_up up_magic_handle_;
@@ -68,7 +69,7 @@ public:
     /// \brief Fetch the resource content in a stream format.
     ///
     /// \param stream The stream to output the content to.
-    virtual std::unique_ptr<http_resource> create_handle(const http_request& request) const noexcept override;
+    virtual std::unique_ptr<http_resource> create_handle(const generic_request& request) const noexcept override;
 
 protected:
     using handle_creator_fn_t = http_external_service*();

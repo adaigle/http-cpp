@@ -20,9 +20,9 @@ public:
     /// \note By default, does nothing.
     virtual void exit() override {};
 
-    void get_message(const http_request&, http_response&);
-    void put_message(const http_request&, http_response&);
-    void delete_message(const http_request&, http_response&);
+    void get_message(const generic_request&, generic_response&);
+    void put_message(const generic_request&, generic_response&);
+    void delete_message(const generic_request&, generic_response&);
 
     static http_external_service* create_service() {
         return new myservice();

@@ -12,7 +12,7 @@ class custom_resource : public http_resource
 public:
     custom_resource(const std::string& request_uri);
 
-    virtual void execute(const http_request&, http_response&) override;
+    virtual void execute(const generic_request&, generic_response&) override;
 
     static http_resource* create_handle(const std::string str) {
         return new custom_resource(str);

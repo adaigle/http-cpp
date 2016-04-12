@@ -11,7 +11,7 @@ add_dependencies(check tests)
 ###########################################################
 # Include googletest
 find_package(GTest REQUIRED)
-if(GTest_FOUND)
+if(${GTEST_FOUND})
     add_library(gtest STATIC IMPORTED)
     set_property(TARGET gtest PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${GTEST_INCLUDE_DIRS})
     set_property(TARGET gtest PROPERTY IMPORTED_LOCATION ${GTEST_LIBRARY})
@@ -54,7 +54,7 @@ add_test(NAME http_conformance_test
 add_dependencies(tests http_conformance_test)
 
 # Compiler requirement for the library.
-set_target_properties(http_conformance_test PROPERTIES CXX_STANDARD 14)
+set_property(TARGET http_conformance_test PROPERTY CXX_STANDARD 14)
 
 target_link_libraries(http_conformance_test
     gtest

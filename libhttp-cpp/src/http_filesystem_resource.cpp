@@ -16,18 +16,18 @@ http_filesystem_resource::http_filesystem_resource(const std::string& request_ur
 
 }
 
-void http_filesystem_resource::execute(const http_request& request, http_response& response)
+void http_filesystem_resource::execute(const generic_request& request, generic_response& response)
 {
     const auto header = fetch_resource_header();
-    response.entity_header["Content-Type"] = header.at("Content-Type");
-    response.entity_header["Content-Length"] = header.at("Content-Length");
-    response.entity_header["Last-Modified"] = header.at("Last-Modified");
+    response.header.insert(header.cbegin(), header.cend());
 
     if (request.method == http_constants::method::m_get) {
         std::ostringstream resource_stream;
         fetch_resource_content(resource_stream);
         response.message_body = resource_stream.str();
     }
+
+    response.status_code = http_constants::status::http_ok;
 }
 
 http_filesystem_resource::header_t http_filesystem_resource::fetch_resource_header()

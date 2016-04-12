@@ -13,22 +13,22 @@ http_protocol_one_zero::http_protocol_one_zero() noexcept :
 
 }
 
-http_request::parsing_status http_protocol_one_zero::parse_request(const std::string& request, http_request& structured_request) noexcept
+http_request::parsing_status http_protocol_one_zero::parse_request(const std::string& request, http_request& structured_request) const noexcept
 {
     // TODO: Implement the parsing of an HTTP 1.0 request.
     return http_request::parsing_status::success;
 }
 
-http_response http_protocol_one_zero::make_response() noexcept
+http_response http_protocol_one_zero::make_response(const generic_response& gresponse) const noexcept
 {
-    http_response response(http_version);
+    http_response response(gresponse, http_version);
+
+    for (const auto& header_value : gresponse.header) {
+        // TODO: Dispatch header based on key.
+        response.response_header[header_value.first] = header_value.second;
+    }
 
     response.response_header["Server"] = "http-cpp v0.1";
     response.general_header["Date"] = http_constants::http_date();
     return response;
-}
-
-void http_protocol_one_zero::execute(const http_resource_factory* const resource_factory, const http_request& request, http_response& response)
-{
-    response.status_code = http_constants::status::http_not_implemented;
 }

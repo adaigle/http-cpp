@@ -53,7 +53,7 @@ void http_server::connect(const std::string& website_path, const std::string& ho
         throw std::invalid_argument("Invalid website root directory. The directory must exist on the filesystem.");
 
     try {
-        const auto insert_iter = websites_.emplace(website_path, http_website::host{host_name, port}, website_name);
+        const auto insert_iter = websites_.emplace(website_path, http_service::host{host_name, port}, website_name);
         if (!insert_iter.second) {
             throw std::invalid_argument("Invalid website identifier. Is the port and name combination already used ?");
         }

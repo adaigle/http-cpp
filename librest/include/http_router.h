@@ -54,15 +54,15 @@ struct url_dispatch_node {
 class http_router
 {
     template <typename T>
-    using member_dispatch_signature = void(T::*)(const http_request&, http_response&);
+    using member_dispatch_signature = void(T::*)(const generic_request&, generic_response&);
 
 public:
-    using dispatch_signature = void(const http_request&, http_response&);
+    using dispatch_signature = void(const generic_request&, generic_response&);
 
     void add_route(const http_constants::method m, const std::string& dispatch_route, std::function<http_router::dispatch_signature> fn);
 
     std::function<dispatch_signature> get_dispatch(const http_constants::method m, const std::string& dispatch_route);
-    bool dispatch(const http_constants::method m, const std::string& dispatch_route, const http_request&, http_response&);
+    bool dispatch(const http_constants::method m, const std::string& dispatch_route, const generic_request&, generic_response&);
 
     template <typename T>
     static std::function<http_router::dispatch_signature> bind(member_dispatch_signature<T> fn, T* this_ptr);

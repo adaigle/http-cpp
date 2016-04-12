@@ -26,7 +26,7 @@ public:
     ///
     /// \param request The request to execute.
     /// \param response The response to fill in.
-    virtual void execute(const http_request& request, http_response& response) override final;
+    virtual void execute(const generic_request& request, generic_response& response) override final;
 
     /// \brief Fetch the resource content in a stream format..
     ///

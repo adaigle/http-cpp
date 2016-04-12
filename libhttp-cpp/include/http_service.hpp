@@ -42,4 +42,11 @@ struct hash<http_constants::method>
 
 }
 
+
+template <typename Stream>
+Stream& operator<<(Stream& stream, const http_service::host& h)
+{
+    return stream << h.name << ":" << h.port;
+}
+
 #endif

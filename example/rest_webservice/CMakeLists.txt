@@ -11,7 +11,7 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/
 # Include boost
 set(Boost_USE_STATIC_LIBS ON)
 set(Boost_COMPILER "-clang37")
-find_package(Boost 1.60 REQUIRED)
+find_package(Boost REQUIRED)
 if(${Boost_FOUND})
     if (NOT TARGET boost)
         add_library(boost INTERFACE IMPORTED)
@@ -58,7 +58,7 @@ set_property(TARGET rest_webservice APPEND PROPERTY INCLUDE_DIRECTORIES "${CMAKE
 set_property(TARGET rest_webservice APPEND PROPERTY INCLUDE_DIRECTORIES "${PROJECT_SOURCE_DIR}/libhttp-cpp/include")
 
 # Compiler requirement for the library.
-set_target_properties(rest_webservice PROPERTIES CXX_STANDARD 14)
+set_property(TARGET rest_webservice PROPERTY CXX_STANDARD 14)
 
 target_link_libraries(rest_webservice
     boost

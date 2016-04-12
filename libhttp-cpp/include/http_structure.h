@@ -9,6 +9,7 @@
 #include <string>
 
 #include "http_constants.h"
+#include "interface/generic_structure.h"
 
 #if defined(HAVE_LIBMAGIC)
 #  include "magic.h"
@@ -49,11 +50,15 @@ struct http_request
     header_map  request_header;
     header_map  entity_header;
     std::string message_body;
+
+    generic_request to_generic() const;
 };
 
 struct http_response
 {
     using header_map = std::map<std::string, std::string>;
+
+    constexpr static auto DEFAULT_HTTP_VERSION = "HTTP/1.1";
 
     ///////////////////////////////////////////////////////
     // HTTP Request format:
@@ -77,7 +82,8 @@ struct http_response
     header_map  entity_header;
     std::string message_body;
 
-    http_response(const std::string http_version = "HTTP/1.1") : http_version(http_version) {}
+    http_response(const std::string http_version = DEFAULT_HTTP_VERSION) noexcept : http_version(http_version) {}
+    http_response(const generic_response& gresponse, const std::string http_version = DEFAULT_HTTP_VERSION) noexcept;
 };
 
 #endif

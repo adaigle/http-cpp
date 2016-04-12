@@ -7,6 +7,8 @@
 #include <exception>
 #include <stdexcept>
 
+#include "logger.hpp"
+
 constexpr decltype(http_constants::SP) http_constants::SP;
 constexpr decltype(http_constants::CM) http_constants::CM;
 constexpr decltype(http_constants::CRLF) http_constants::CRLF;
@@ -18,6 +20,10 @@ constexpr decltype(http_constants::ENTITY_HEADER) http_constants::ENTITY_HEADER;
 std::string http_constants::reason_phrase(http_constants::status code)
 {
 	switch (code) {
+		case http_constants::status::http_unknown:
+			logger::warn() << "Unknown http code." << logger::endl;
+			return "Unknown";
+
 		case http_constants::status::http_continue: 				return "Continue";
 		case http_constants::status::http_switching_protocols: 		return "Switching Protocols";
 

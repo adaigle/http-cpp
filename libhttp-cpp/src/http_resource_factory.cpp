@@ -51,29 +51,36 @@ http_filesystem_resource_factory::http_filesystem_resource_factory(const std::st
 #endif
 }
 
-std::unique_ptr<http_resource> http_filesystem_resource_factory::create_handle(const http_request& request) const noexcept
+std::unique_ptr<http_resource> http_filesystem_resource_factory::create_handle(const generic_request& request) const noexcept
 {
     std::string path = virtual_path_ + request.request_uri;
     assert(path.length() > 0);
 
-    if (boost::filesystem::exists(path)) {
-        if (boost::filesystem::is_directory(path)) {
-            if (path.back() != '/')
-                path.append("/");
+    if (!boost::filesystem::exists(path)) {
+        return std::unique_ptr<http_resource>(nullptr);
+    }
 
-            std::string index_path = path + "index.html";
-            if (boost::filesystem::exists(index_path) && !boost::filesystem::is_directory(index_path)) {
-                // Fallback #1: index.html
-                return std::unique_ptr<http_resource>(new http_filesystem_resource(index_path, up_magic_handle_.get()));
-            } else if (true) {
-                // Fallback #2: directory listing
-                return std::unique_ptr<http_resource>(new http_directory_listing(path, up_magic_handle_.get()));
-            } else {
-                return std::unique_ptr<http_resource>(nullptr);
-            }
+    if (boost::filesystem::is_regular_file(path)) {
+        return std::unique_ptr<http_resource>(new http_filesystem_resource(path, up_magic_handle_.get()));
+    }
+
+    if (boost::filesystem::is_directory(path)) {
+        if (path.back() != '/')
+            path.append("/");
+
+        std::string index_path = path + "index.html";
+        if (boost::filesystem::exists(index_path) && !boost::filesystem::is_directory(index_path)) {
+            // Fallback #1: index.html
+            return std::unique_ptr<http_resource>(new http_filesystem_resource(index_path, up_magic_handle_.get()));
+        } else if (true) {
+            // Fallback #2: directory listing
+            return std::unique_ptr<http_resource>(new http_directory_listing(path, up_magic_handle_.get()));
+        } else {
+            return std::unique_ptr<http_resource>(nullptr);
         }
     }
-    return std::unique_ptr<http_resource>(new http_filesystem_resource(path, up_magic_handle_.get()));
+
+    return std::unique_ptr<http_resource>(nullptr);
 }
 
 http_external_resource_factory::http_external_resource_factory(const std::string& library_path) :
@@ -91,7 +98,8 @@ http_external_resource_factory::http_external_resource_factory(const std::string
     service_->setup();
 }
 
-std::unique_ptr<http_resource> http_external_resource_factory::create_handle(const http_request& request) const noexcept
+std::unique_ptr<http_resource> http_external_resource_factory::create_handle(const generic_request& request) const noexcept
 {
+    logger::info() << "Requesting: " << request.request_uri << logger::endl;
     return std::unique_ptr<http_resource>(service_->create_resource(request));
 }

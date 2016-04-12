@@ -27,6 +27,7 @@ struct http_constants
     };
 
     enum class status : uint16_t {
+        http_unknown = 0,
         http_continue = 100,
         http_switching_protocols = 101,
 

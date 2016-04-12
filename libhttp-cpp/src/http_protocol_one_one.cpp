@@ -24,7 +24,7 @@ http_protocol_one_one::http_protocol_one_one() noexcept :
 }
 
 
-http_request::parsing_status http_protocol_one_one::parse_request(const std::string& request, http_request& structured_request) noexcept
+http_request::parsing_status http_protocol_one_one::parse_request(const std::string& request, http_request& structured_request) const noexcept
 {
 	if (request.empty())
 		return http_request::parsing_status::empty_request;
@@ -117,86 +117,91 @@ http_request::parsing_status http_protocol_one_one::parse_request(const std::str
 	return http_request::parsing_status::success;
 }
 
-http_response http_protocol_one_one::make_response() noexcept
+http_response http_protocol_one_one::make_response(const generic_response& gresponse) const noexcept
 {
-    http_response response(http_version);
+    http_response response(gresponse, http_version);
+
+    for (const auto& header_value : gresponse.header) {
+        // TODO: Dispatch header based on key.
+        response.response_header[header_value.first] = header_value.second;
+    }
 
     response.response_header["Server"] = "http-cpp v0.1";
     response.general_header["Date"] = http_constants::http_date();
     return response;
 }
 
-void http_protocol_one_one::execute(const http_resource_factory* const resource_factory, const http_request& request, http_response& response)
-{
-    const auto it = dispatcher_.find(request.method);
-    if (it != dispatcher_.cend()) {
-        try {
-            std::unique_ptr<http_resource> resource = resource_factory->create_handle(request);
-            if (!resource) {
-                response.status_code = http_constants::status::http_not_found;
-                return;
-            }
-
-            resource->execute(request, response);
-        } catch (std::exception& e) {
-            // Resource cannot be loaded, send out a 404 response.
-            response.status_code = http_constants::status::http_not_found;
-        }
-    } else {
-        response.status_code = http_constants::status::http_not_implemented;
-        response.entity_header["Allow"] = list_implemented_methods();
-    }
-}
-
-void http_protocol_one_one::execute_get(const http_resource_factory* const resource_factory, const http_request& request, http_response& response) const
-{
-    try {
-        std::unique_ptr<http_resource> resource = resource_factory->create_handle(request);
-        if (!resource) {
-            response.status_code = http_constants::status::http_not_found;
-            return;
-        }
-
-        resource->execute(request, response);
-
-        /*const auto header = resource->fetch_resource_header();
-        response.entity_header["Content-Type"] = header.at("Content-Type");
-        response.entity_header["Content-Length"] = header.at("Content-Length");
-        response.entity_header["Last-Modified"] = header.at("Last-Modified");
-
-        std::ostringstream resource_stream;
-        resource->fetch_resource_content(resource_stream);
-        response.message_body = resource_stream.str();*/
-
-        response.status_code = http_constants::status::http_ok;
-    } catch (std::exception& e) {
-        // Resource cannot be loaded, send out a 404 response.
-        response.status_code = http_constants::status::http_not_found;
-    }
-}
-
-void http_protocol_one_one::execute_head(const http_resource_factory* const resource_factory, const http_request& request, http_response& response) const
-{
-    try {
-        std::unique_ptr<http_resource> resource = resource_factory->create_handle(request);
-        if (!resource) {
-            response.status_code = http_constants::status::http_not_found;
-            return;
-        }
-
-        resource->execute(request, response);
-
-        /*const auto header = resource->fetch_resource_header();
-        response.entity_header["Content-Type"] = header.at("Content-Type");
-        response.entity_header["Content-Length"] = header.at("Content-Length");
-        response.entity_header["Last-Modified"] = header.at("Last-Modified");*/
-
-        response.status_code = http_constants::status::http_ok;
-    } catch (std::exception& e) {
-        // Resource cannot be loaded, send out a 404 response.
-        response.status_code = http_constants::status::http_not_found;
-    }
-}
+//void http_protocol_one_one::execute(const http_resource_factory* const resource_factory, const http_request& request, http_response& response)
+//{
+//    const auto it = dispatcher_.find(request.method);
+//    if (it != dispatcher_.cend()) {
+//        try {
+//            std::unique_ptr<http_resource> resource = resource_factory->create_handle(request);
+//            if (!resource) {
+//                response.status_code = http_constants::status::http_not_found;
+//                return;
+//            }
+//
+//            resource->execute(request, response);
+//        } catch (std::exception& e) {
+//            // Resource cannot be loaded, send out a 404 response.
+//            response.status_code = http_constants::status::http_not_found;
+//        }
+//    } else {
+//        response.status_code = http_constants::status::http_not_implemented;
+//        response.entity_header["Allow"] = list_implemented_methods();
+//    }
+//}
+//
+//void http_protocol_one_one::execute_get(const http_resource_factory* const resource_factory, const http_request& request, http_response& response) const
+//{
+//    try {
+//        std::unique_ptr<http_resource> resource = resource_factory->create_handle(request);
+//        if (!resource) {
+//            response.status_code = http_constants::status::http_not_found;
+//            return;
+//        }
+//
+//        resource->execute(request, response);
+//
+//        /*const auto header = resource->fetch_resource_header();
+//        response.entity_header["Content-Type"] = header.at("Content-Type");
+//        response.entity_header["Content-Length"] = header.at("Content-Length");
+//        response.entity_header["Last-Modified"] = header.at("Last-Modified");
+//
+//        std::ostringstream resource_stream;
+//        resource->fetch_resource_content(resource_stream);
+//        response.message_body = resource_stream.str();*/
+//
+//        response.status_code = http_constants::status::http_ok;
+//    } catch (std::exception& e) {
+//        // Resource cannot be loaded, send out a 404 response.
+//        response.status_code = http_constants::status::http_not_found;
+//    }
+//}
+//
+//void http_protocol_one_one::execute_head(const http_resource_factory* const resource_factory, const http_request& request, http_response& response) const
+//{
+//    try {
+//        std::unique_ptr<http_resource> resource = resource_factory->create_handle(request);
+//        if (!resource) {
+//            response.status_code = http_constants::status::http_not_found;
+//            return;
+//        }
+//
+//        resource->execute(request, response);
+//
+//        /*const auto header = resource->fetch_resource_header();
+//        response.entity_header["Content-Type"] = header.at("Content-Type");
+//        response.entity_header["Content-Length"] = header.at("Content-Length");
+//        response.entity_header["Last-Modified"] = header.at("Last-Modified");*/
+//
+//        response.status_code = http_constants::status::http_ok;
+//    } catch (std::exception& e) {
+//        // Resource cannot be loaded, send out a 404 response.
+//        response.status_code = http_constants::status::http_not_found;
+//    }
+//}
 
 std::string http_protocol_one_one::list_implemented_methods() const
 {

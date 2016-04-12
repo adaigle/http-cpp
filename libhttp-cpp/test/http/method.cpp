@@ -7,7 +7,7 @@
 class http_conformance_method_test : public ::testing::Test {
 protected:
     virtual void SetUp() {
-        service_ = std::make_unique<http_service>("method_conformance", "method_conformance", "method_conformance");
+        service_ = std::make_unique<http_service>("method_conformance", http_service::host{"method_conformance", 80}, "method_conformance");
     }
 
     virtual void TearDown() {

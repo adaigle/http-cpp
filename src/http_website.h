@@ -10,27 +10,20 @@ class http_website
 {
     friend class std::hash<http_website>;
 public:
-    struct host {
-        std::string name;
-        uint16_t port;
 
-        explicit host(const std::string& n, const uint16_t p);
-
-        bool match(const std::string& host) const;
-        bool operator==(const host& other) const;
-        bool operator<(const host& other) const;
-    };
-
-    http_website(const std::string& website_path, host&& h, const std::string& website_name = "") noexcept;
+    http_website(const std::string& website_path, http_service::host&& h, const std::string& website_name = "") noexcept;
     ~http_website();
 
     http_response execute(const http_request& request) const;
 
     bool operator==(const std::string& host) const;
+    bool operator==(const http_service::host& other) const;
     bool operator==(const http_website& other) const;
+    bool operator<(const http_service::host& other) const;
     bool operator<(const http_website& other) const;
 
-    const host host_;
+    const http_service::host& host() const;
+
 private:
     http_service service_;
 };

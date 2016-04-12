@@ -21,7 +21,7 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 # Include boost
 set(Boost_USE_STATIC_LIBS ON)
 set(Boost_COMPILER "-clang37")
-find_package(Boost 1.60 COMPONENTS system filesystem REQUIRED)
+find_package(Boost COMPONENTS system filesystem REQUIRED)
 if(${Boost_FOUND})
     add_library(boost INTERFACE IMPORTED)
     set_property(TARGET boost PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${Boost_INCLUDE_DIR})
@@ -94,7 +94,7 @@ add_executable(http-cpp
 )
 
 # Compiler requirement for the library.
-set_target_properties(http-cpp PROPERTIES CXX_STANDARD 14)
+set_property(TARGET http-cpp PROPERTY CXX_STANDARD 14)
 
 target_link_libraries(http-cpp
     boost

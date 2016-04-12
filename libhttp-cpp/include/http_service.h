@@ -17,12 +17,27 @@ class http_protocol_handler_cache;
 class http_service
 {
 public:
+    struct host {
+        std::string name;
+        uint16_t port;
+
+        explicit host(const std::string& n, const uint16_t p) noexcept;
+
+        bool match(const std::string& host) const;
+        bool operator==(const host& other) const;
+        bool operator!=(const host& other) const;
+        bool operator<(const host& other) const;
+
+        template <typename Stream>
+        friend Stream& operator<<(Stream&, const host&);
+    };
+
     /// \brief Constructor of an http service.
     ///
     /// \param service_path Path to the website / web service.
     /// \param name Internal name of the service.
     /// \param host Host of the http service (external name).
-    http_service(const std::string& service_path, const std::string& host, const std::string& name = "");
+    http_service(const std::string& service_path, host&& host, const std::string& name = "");
 
     /// \brief Default destructor.
     ~http_service();
@@ -55,15 +70,16 @@ public:
     ///
     /// \param request The http request.
     /// \returns The hostname found in the request.
-    static std::string extract_host(const http_request&);
+    static host extract_host(const http_request&);
+
+    const std::string name_;
+    const host        host_;
 
 protected:
     http_service() = delete;
     http_service(const http_service&) = delete;
     http_service& operator=(const http_service&) = delete;
 
-    const std::string name_;
-    const std::string host_;
     const std::string service_path_;
 
     std::unique_ptr<http_resource_factory> resource_factory_;

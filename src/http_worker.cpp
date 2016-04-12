@@ -120,7 +120,7 @@ void http_worker::handle_request(zmq::socket_t& socket)
         const http_request request = http_service::parse_request(frame);
         const http_website& website = find_website(request);
 
-        logger::info() << "website: " << website.host_.name << " " << website.host_.port << logger::endl;
+        logger::info() << "website: " << website.host() << logger::endl;
 
 
         ///////////////////////////////////////////////////
@@ -162,13 +162,13 @@ void http_worker::handle_request(zmq::socket_t& socket)
 
 const http_website& http_worker::find_website(const http_request& request) const
 {
-    const std::string host = http_service::extract_host(request);
+    const http_service::host host = http_service::extract_host(request);
 
     auto iter = std::find(std::cbegin(websites_), std::cend(websites_), host);
     if (iter == std::cend(websites_)) {
         logger::warn() << "Unknown website '" << host << "' among: " << logger::endl;
         for (const auto& website : websites_)
-            logger::warn() << website.host_.name << " " << website.host_.port << logger::endl;
+            logger::warn() << website.host() << logger::endl;
         throw http_invalid_request("Unknown website...");
     }
 

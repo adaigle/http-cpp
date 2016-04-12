@@ -16,7 +16,7 @@ public:
     /// \brief Execute an http request on an external http service.
     ///
     /// \param request The http request to execute.
-    std::unique_ptr<http_resource> create_resource(const http_request& request) override final {
+    std::unique_ptr<http_resource> create_resource(const generic_request& request) override final {
         auto fn = router.get_dispatch(request.method, request.request_uri);
         return std::make_unique<rest_resource>(request.request_uri, fn);
     }
