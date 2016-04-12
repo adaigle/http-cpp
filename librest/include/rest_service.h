@@ -17,8 +17,9 @@ public:
     ///
     /// \param request The http request to execute.
     std::unique_ptr<http_resource> create_resource(const generic_request& request) override final {
-        auto fn = router.get_dispatch(request.method, request.request_uri);
-        return std::make_unique<rest_resource>(request.request_uri, fn);
+        rest_resource::param_t params;
+        auto fn = router.get_dispatch(request.method, request.request_uri, params);
+        return std::make_unique<rest_resource>(request.request_uri, fn, params);
     }
 
     /// \brief Allow external services to release resources properly.

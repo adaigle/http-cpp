@@ -53,15 +53,17 @@ struct url_dispatch_node {
 
 class http_router
 {
+    using param_t = std::map<std::string, std::string>;
+
     template <typename T>
-    using member_dispatch_signature = void(T::*)(const generic_request&, generic_response&);
+    using member_dispatch_signature = void(T::*)(const generic_request&, generic_response&, const param_t&);
 
 public:
-    using dispatch_signature = void(const generic_request&, generic_response&);
+    using dispatch_signature = void(const generic_request&, generic_response&, const param_t&);
 
     void add_route(const http_constants::method m, const std::string& dispatch_route, std::function<http_router::dispatch_signature> fn);
 
-    std::function<dispatch_signature> get_dispatch(const http_constants::method m, const std::string& dispatch_route);
+    std::function<dispatch_signature> get_dispatch(const http_constants::method m, const std::string& dispatch_route, param_t& out_params);
     bool dispatch(const http_constants::method m, const std::string& dispatch_route, const generic_request&, generic_response&);
 
     template <typename T>
@@ -77,7 +79,7 @@ template <typename T>
 std::function<http_router::dispatch_signature> http_router::bind(member_dispatch_signature<T> fn, T* this_ptr)
 {
     using namespace std::placeholders;
-    return std::bind(fn, this_ptr, _1, _2);
+    return std::bind(fn, this_ptr, _1, _2, _3);
 }
 
 #endif

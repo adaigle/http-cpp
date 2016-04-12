@@ -58,7 +58,7 @@ void http_router::add_route(const http_constants::method m, const std::string& d
     node->functions_.emplace(m, fn);
 }
 
-std::function<http_router::dispatch_signature> http_router::get_dispatch(const http_constants::method m, const std::string& dispatch_route)
+std::function<http_router::dispatch_signature> http_router::get_dispatch(const http_constants::method m, const std::string& dispatch_route, param_t& out_params)
 {
     if (dispatch_route.empty() || dispatch_route.front() != '/')
         throw std::invalid_argument("The dispatch route must be non empty and start with a leading '/'.");
@@ -69,12 +69,15 @@ std::function<http_router::dispatch_signature> http_router::get_dispatch(const h
 	std::vector<std::string> dispatch_split;
 	boost::split(dispatch_split, rel_route, boost::is_any_of("/"));
 
-    std::map<std::string, std::string> params;
-
     dispatch_node* node = &router_dispatch_;
     std::string total_path;
     for (const std::string& route : dispatch_split) {
         total_path += "/" + route;
+
+        // No route can be empty.
+        // TODO: Improve handling of invalid routes.
+        if (route.empty())
+            break;
 
         // Check for static route first.
         const auto it = node->static_routes_.find(route);
@@ -84,9 +87,9 @@ std::function<http_router::dispatch_signature> http_router::get_dispatch(const h
             // If no static routes are found, fallback to dynamic route.
             if (node->dynamic_route_node_) {
                 assert(!node->dynamic_route_identifier_.empty());
-                assert(params.find(node->dynamic_route_identifier_) == params.cend());
+                assert(out_params.find(node->dynamic_route_identifier_) == out_params.cend());
 
-                params.emplace(node->dynamic_route_identifier_, route);
+                out_params.emplace(node->dynamic_route_identifier_, route);
                 node = node->dynamic_route_node_.get();
             } else {
                 return nullptr;
@@ -106,10 +109,11 @@ std::function<http_router::dispatch_signature> http_router::get_dispatch(const h
 
 bool http_router::dispatch(const http_constants::method m, const std::string& dispatch_route, const generic_request& request, generic_response& response)
 {
-    std::function<dispatch_signature> fn = get_dispatch(m, dispatch_route);
+    param_t params;
+    std::function<dispatch_signature> fn = get_dispatch(m, dispatch_route, params);
 
     if (fn) {
-        fn(request, response);
+        fn(request, response, params);
         return true;
     }
     return false;
