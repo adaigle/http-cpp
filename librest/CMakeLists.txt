@@ -40,10 +40,12 @@ endif()
 ##############################################################################
 
 add_library(librest STATIC
-    include/http_router.h
     include/rest_service.h
     include/rest_resource.h
-    src/http_router.cpp
+    include/router.h
+    include/router.hpp
+    include/parameter_pack.h
+    src/dummy.cpp
 )
 set_property(TARGET librest PROPERTY PREFIX "")
 set_property(TARGET librest APPEND PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/include")

@@ -5,9 +5,12 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <type_traits>
 
 #include "http_constants.h"
-#include "http_structure.h"
+
+#include "interface/generic_structure.h"
+#include "rest_request.h"
 
 class type_dispatch {
 public:
@@ -51,23 +54,21 @@ struct url_dispatch_node {
 //
 ///////////////////////////////////////////////////////////
 
-class http_router
+template <typename ReturnType, typename... Params>
+class router
 {
-    using param_t = std::map<std::string, std::string>;
-
     template <typename T>
-    using member_dispatch_signature = void(T::*)(const generic_request&, generic_response&, const param_t&);
+    using member_dispatch_signature = ReturnType(T::*)(Params...);
 
 public:
-    using dispatch_signature = void(const generic_request&, generic_response&, const param_t&);
+    using dispatch_signature = ReturnType(Params...);
 
-    void add_route(const http_constants::method m, const std::string& dispatch_route, std::function<http_router::dispatch_signature> fn);
+    void add_route(const http_constants::method m, const std::string& dispatch_route, std::function<dispatch_signature> fn);
 
-    std::function<dispatch_signature> get_dispatch(const http_constants::method m, const std::string& dispatch_route, param_t& out_params);
-    bool dispatch(const http_constants::method m, const std::string& dispatch_route, const generic_request&, generic_response&);
+    std::function<dispatch_signature> get_dispatch(const http_constants::method m, const std::string& dispatch_route, rest_request::param_t& out_params) const;
 
     template <typename T>
-    static std::function<http_router::dispatch_signature> bind(member_dispatch_signature<T> fn, T* this_ptr);
+    static std::function<dispatch_signature> bind(member_dispatch_signature<T> fn, T* this_ptr);
 
 private:
     using dispatch_node = url_dispatch_node<dispatch_signature>;
@@ -75,11 +76,12 @@ private:
     dispatch_node router_dispatch_;
 };
 
+template <typename ReturnType, typename... Params>
 template <typename T>
-std::function<http_router::dispatch_signature> http_router::bind(member_dispatch_signature<T> fn, T* this_ptr)
+std::function<typename router<ReturnType, Params...>::dispatch_signature> router<ReturnType, Params...>::bind(member_dispatch_signature<T> fn, T* this_ptr)
 {
     using namespace std::placeholders;
-    return std::bind(fn, this_ptr, _1, _2, _3);
+    return std::bind(fn, this_ptr, _1, _2);
 }
 
 #endif

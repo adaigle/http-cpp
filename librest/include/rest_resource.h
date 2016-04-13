@@ -4,28 +4,26 @@
 #include "interface/http_resource.h"
 #include "interface/generic_structure.h"
 
+#include "rest_request.h"
+#include "parameter_pack.h"
+
 #include <cassert>
 #include <functional>
-#include <map>
 #include <string>
-
-#include <boost/dll/alias.hpp>
 
 class rest_resource : public http_resource
 {
-public:
-    using param_t = std::map<std::string, std::string>;
-
-private:
-    using function_signature = void(const generic_request&, generic_response&, const param_t&);
 
 public:
-    rest_resource(const std::string& request_uri, std::function<function_signature> fn, const param_t& params) :
+    using function_parameter_pack = parameter_pack_type<void, const rest_request&, generic_response&>;
+    using function_signature = function_parameter_pack::fn_type;
+
+    rest_resource(const std::string& request_uri, std::function<function_signature> fn, const rest_request::param_t& params) :
         http_resource(request_uri), fn_(fn), params_(params) {}
 
     void execute(const generic_request& request, generic_response& response) override final {
         if (fn_) {
-            fn_(request, response, params_);
+            fn_(rest_request{request, params_}, response);
         } else {
             response.status_code = http_constants::status::http_not_found;
         }
@@ -33,7 +31,7 @@ public:
 
 private:
     std::function<function_signature> fn_;
-    param_t params_;
+    rest_request::param_t params_;
 };
 
 #endif

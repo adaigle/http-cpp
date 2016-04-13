@@ -1,12 +1,15 @@
 #ifndef REST_SERVICE_H
 #define REST_SERVICE_H
 
-#include "http_router.h"
+#include "router.hpp"
 #include "rest_resource.h"
+#include "rest_request.h"
 
 #include "interface/http_external_service.h"
 
-class rest_service : public http_external_service
+using http_router = rest_resource::function_parameter_pack::apply_t<router>;
+
+class rest_service : public http_external_service, protected http_router
 {
 public:
     /// \brief Allow external services to initialize properly.
@@ -17,17 +20,14 @@ public:
     ///
     /// \param request The http request to execute.
     std::unique_ptr<http_resource> create_resource(const generic_request& request) override final {
-        rest_resource::param_t params;
-        auto fn = router.get_dispatch(request.method, request.request_uri, params);
+        rest_request::param_t params;
+        auto fn = get_dispatch(request.method, request.request_uri, params);
         return std::make_unique<rest_resource>(request.request_uri, fn, params);
     }
 
     /// \brief Allow external services to release resources properly.
     /// \note By default, does nothing.
     virtual void exit() override {};
-
-protected:
-    http_router router;
 };
 
 #endif

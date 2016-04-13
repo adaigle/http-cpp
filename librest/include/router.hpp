@@ -1,4 +1,4 @@
-#include "http_router.h"
+#include "router.h"
 
 #include <exception>
 #include <regex>
@@ -6,7 +6,8 @@
 
 #include <boost/algorithm/string.hpp>
 
-void http_router::add_route(const http_constants::method m, const std::string& dispatch_route, std::function<http_router::dispatch_signature> fn)
+template <typename ReturnType, typename... Params>
+void router<ReturnType, Params...>::add_route(const http_constants::method m, const std::string& dispatch_route, std::function<dispatch_signature> fn)
 {
     if (dispatch_route.empty() || dispatch_route.front() != '/')
         throw std::invalid_argument("The dispatch route must be non empty and start with a leading '/'.");
@@ -58,7 +59,9 @@ void http_router::add_route(const http_constants::method m, const std::string& d
     node->functions_.emplace(m, fn);
 }
 
-std::function<http_router::dispatch_signature> http_router::get_dispatch(const http_constants::method m, const std::string& dispatch_route, param_t& out_params)
+template <typename ReturnType, typename... Params>
+std::function<typename router<ReturnType, Params...>::dispatch_signature>
+    router<ReturnType, Params...>::get_dispatch(const http_constants::method m, const std::string& dispatch_route, rest_request::param_t& out_params) const
 {
     if (dispatch_route.empty() || dispatch_route.front() != '/')
         throw std::invalid_argument("The dispatch route must be non empty and start with a leading '/'.");
@@ -69,7 +72,7 @@ std::function<http_router::dispatch_signature> http_router::get_dispatch(const h
 	std::vector<std::string> dispatch_split;
 	boost::split(dispatch_split, rel_route, boost::is_any_of("/"));
 
-    dispatch_node* node = &router_dispatch_;
+    const dispatch_node* node = &router_dispatch_;
     std::string total_path;
     for (const std::string& route : dispatch_split) {
         total_path += "/" + route;
@@ -105,16 +108,4 @@ std::function<http_router::dispatch_signature> http_router::get_dispatch(const h
     }
 
     return it->second;
-}
-
-bool http_router::dispatch(const http_constants::method m, const std::string& dispatch_route, const generic_request& request, generic_response& response)
-{
-    param_t params;
-    std::function<dispatch_signature> fn = get_dispatch(m, dispatch_route, params);
-
-    if (fn) {
-        fn(request, response, params);
-        return true;
-    }
-    return false;
 }
