@@ -7,7 +7,7 @@
 #include <exception>
 #include <stdexcept>
 
-#include "logger.hpp"
+#include "logger.h"
 
 constexpr decltype(http_constants::SP) http_constants::SP;
 constexpr decltype(http_constants::CM) http_constants::CM;
@@ -21,7 +21,7 @@ std::string http_constants::reason_phrase(http_constants::status code)
 {
 	switch (code) {
 		case http_constants::status::http_unknown:
-			logger::warn() << "Unknown http code." << logger::endl;
+			logger::log()->warn() << "Unknown http code.";
 			return "Unknown";
 
 		case http_constants::status::http_continue: 				return "Continue";

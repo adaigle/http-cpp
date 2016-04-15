@@ -2,8 +2,6 @@
 
 #include <boost/filesystem.hpp>
 
-#include "logger.hpp"
-
 http_directory_listing::http_directory_listing(const std::string& request_uri, magic_handle_t magic_handle) :
     http_filesystem_resource(request_uri, magic_handle)
 {

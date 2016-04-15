@@ -21,7 +21,7 @@
 
 #include "http_exception.h"
 
-#include "logger.hpp"
+#include "logger.h"
 
 std::unique_ptr<http_protocol_handler_cache> http_service::protocol_handler_cache_(std::make_unique<http_protocol_handler_cache>());
 
@@ -96,7 +96,7 @@ http_response http_service::execute(const http_request& request) const
     // 3. Identify web service.
     const host detected_host = extract_host(request);
     if (detected_host != host_)
-        logger::warn() << "Non-matching host, expected '" << host_ << "' but got '" << detected_host << "'." << logger::endl;
+        logger::log()->warn() << "Non-matching host, expected '" << host_ << "' but got '" << detected_host << "'.";
 
     ///////////////////////////////////////////////////
     // 4. Create generic request & response.
@@ -115,19 +115,19 @@ http_response http_service::execute(const http_request& request) const
             std::unique_ptr<http_resource> resource = resource_factory_->create_handle(grequest);
             if (!resource) {
                 gresponse.status_code = http_constants::status::http_not_found;
-                logger::warn() << "Resource not found." << logger::endl;
+                logger::log()->warn() << "Resource not found.";
             } else {
                 resource->execute(grequest, gresponse);
             }
 
         } catch (http_invalid_request& e) {
             gresponse.status_code = http_constants::status::http_bad_request;
-            logger::warn() << "Bad request: " << e.what() << logger::endl;
+            logger::log()->warn() << "Bad request: " << e.what();
         } catch (std::exception& e) {
             // Resource cannot be loaded, send out a 500 (Internal Server Error) response.
             gresponse.status_code = http_constants::status::http_internal_server_error;
-            logger::error() << "Exception while executing the request:" << logger::endl;
-            logger::error() << e.what() << logger::endl;
+            logger::log()->error() << "Exception while executing the request:";
+            logger::log()->error() << e.what();
         }
     }
 
@@ -167,10 +167,10 @@ http_service::host http_service::extract_host(const http_request& request)
         const std::string raw_abs_path = matches[4];
         const std::string raw_query = matches[6];
 
-        logger::trace() << "Absolute URI detected: " << logger::endl;
-        logger::trace() << " - Host: " << raw_host << "(" << raw_port << ")" << logger::endl;
-        logger::trace() << " - Abs_path: " << raw_abs_path << logger::endl;
-        logger::trace() << " - Query: " << raw_query << logger::endl;
+        logger::log()->trace() << "Absolute URI detected: ";
+        logger::log()->trace() << " - Host: " << raw_host << "(" << raw_port << ")";
+        logger::log()->trace() << " - Abs_path: " << raw_abs_path;
+        logger::log()->trace() << " - Query: " << raw_query;
 
         // Set default port to 80.
         uint16_t port;
@@ -185,17 +185,17 @@ http_service::host http_service::extract_host(const http_request& request)
         // Make sure that the host header exists.
         const auto host_it = request.request_header.find("Host");
         if (host_it == request.request_header.cend()) {
-            logger::warn() << "The 'Host' header must be provided for absolute-path requests." << logger::endl;
+            logger::log()->warn() << "The 'Host' header must be provided for absolute-path requests.";
             throw http_invalid_request("'Host' header is missing.");
         }
 
         const std::string raw_abs_path = matches[1];
         const std::string raw_query = matches[4];
 
-        logger::trace() << "Absolute path detected: " << logger::endl;
-        logger::trace() << " - Host: " << host_it->second << logger::endl;
-        logger::trace() << " - Abs_path: " << raw_abs_path << logger::endl;
-        logger::trace() << " - Query: " << raw_query << logger::endl;
+        logger::log()->trace() << "Absolute path detected: ";
+        logger::log()->trace() << " - Host: " << host_it->second;
+        logger::log()->trace() << " - Abs_path: " << raw_abs_path;
+        logger::log()->trace() << " - Query: " << raw_query;
 
         std::smatch host_matches;
         if (std::regex_match(host_it->second, host_matches, host_regex)) {
@@ -219,7 +219,7 @@ http_service::host http_service::extract_host(const http_request& request)
 
     // TODO: Handle 'authority'-based request.
 
-    logger::warn() << "Invalid Request-URI: " << request.request_uri << logger::endl;
+    logger::log()->warn() << "Invalid Request-URI: " << request.request_uri;
     throw std::invalid_argument("Invalid Request-URI parameter in the request, could not detect a valid format.");
 }
 

@@ -11,7 +11,7 @@
 
 #include <boost/algorithm/string.hpp>
 
-#include "logger.hpp"
+#include "logger.h"
 
 constexpr decltype(http_protocol_one_one::http_version) http_protocol_one_one::http_version;
 
@@ -106,13 +106,13 @@ http_request::parsing_status http_protocol_one_one::parse_request(const std::str
 
 	std::string printable_request_line = request_line;
 	boost::replace_all(printable_request_line, "\r", "" /*"\\r"*/);
-	logger::info() << printable_request_line << logger::endl;
+	logger::log()->trace() << printable_request_line;
 	for (const auto& h : structured_request.general_header)
-		logger::wire() << h.first << ":" << h.second << logger::endl;
+		logger::log()->trace() << h.first << ":" << h.second;
 	for (const auto& h : structured_request.request_header)
-		logger::wire() << h.first << ":" << h.second << logger::endl;
+		logger::log()->trace() << h.first << ":" << h.second;
 	for (const auto& h : structured_request.entity_header)
-		logger::wire() << h.first << ":" << h.second << logger::endl;
+		logger::log()->trace() << h.first << ":" << h.second;
 
 	return http_request::parsing_status::success;
 }

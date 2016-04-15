@@ -58,6 +58,13 @@ if(NOT ${libmagic_FOUND})
     message(WARNING "libmagic could NOT be found, content-type detection will be disabled.")
 endif()
 
+###########################################################
+# Include spdlog
+if (NOT TARGET spdlog)
+    add_library(spdlog INTERFACE IMPORTED)
+    set_property(TARGET spdlog PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/ext/spdlog/include")
+endif()
+
 ##############################################################################
 # Set compiler options
 ##############################################################################
@@ -115,7 +122,7 @@ add_library(libhttp-cpp SHARED
     src/http_filesystem_resource.cpp
     src/http_directory_listing.h
     src/http_directory_listing.cpp
-    src/logger.hpp
+    src/logger.h
     src/logger.cpp
 )
 
@@ -136,6 +143,7 @@ target_link_libraries(libhttp-cpp
     boost-system
     boost-filesystem
     boost-dll
+    spdlog
     libmagic
     libhttp-interface
     ${THREADING_LIBRARY}

@@ -8,7 +8,7 @@
 
 #include <boost/filesystem.hpp>
 
-#include "logger.hpp"
+#include "logger.h"
 
 http_filesystem_resource::http_filesystem_resource(const std::string& request_uri, magic_handle_t magic_handle) :
     http_resource(request_uri), magic_handle_(magic_handle), stream_(request_uri, std::ios::binary)
@@ -68,7 +68,7 @@ std::string http_filesystem_resource::get_content_type()
     if (magic_handle_ != nullptr) {
         const char* raw_content_type = ::magic_file(magic_handle_, request_uri_.c_str());
         if (raw_content_type == nullptr) {
-            logger::warn() << "Could not detect content-type, defaulting to text/plain...." << logger::endl;
+            logger::log()->warn() << "Could not detect content-type, defaulting to text/plain....";
         } else {
             content_type = raw_content_type;
         }

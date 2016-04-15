@@ -43,8 +43,8 @@ struct hash<http_constants::method>
 }
 
 
-template <typename Stream>
-Stream& operator<<(Stream& stream, const http_service::host& h)
+template <typename ChatT, typename Traits>
+std::basic_ostream<ChatT, Traits>& operator<<(std::basic_ostream<ChatT, Traits>& stream, const http_service::host& h)
 {
     return stream << h.name << ":" << h.port;
 }

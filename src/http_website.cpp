@@ -5,8 +5,6 @@
 #include <iterator>
 #include <sstream>
 
-#include "logger.hpp"
-
 
 http_website::http_website(const std::string& website_path, http_service::host&& h, const std::string& website_name /* = "" */) noexcept :
     service_(website_path, std::move(h), website_name)

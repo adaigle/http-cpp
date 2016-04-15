@@ -5,7 +5,7 @@
 #include <exception>
 #include <thread>
 
-#include "logger.hpp"
+#include "logger.h"
 
 class class_thread
 {
@@ -13,13 +13,13 @@ public:
     class_thread() : running(), thread() {
 
     }
-    
+
     virtual ~class_thread() {
         try {
             stop();
         } catch(std::exception& e) {
-            logger::error() << "Server error, failed to stop the worker properly." << logger::endl;
-            logger::error() << e.what() << logger::endl;
+            logger::log(logger::type::server)->error() << "Server error, failed to stop the worker properly.";
+            logger::log(logger::type::server)->error() << e.what();
         }
     }
 

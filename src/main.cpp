@@ -1,11 +1,12 @@
 #include "http_server.h"
 
-#include "logger.hpp"
+#include "logger.h"
 
 int main(int argc, char* argv[])
 {
-    logger::log_level(logger::type::trace);
-    logger::info() << "Starting the server..." << logger::endl;
+    logger::log(logger::type::server)->set_level(spdlog::level::trace);
+    logger::log(logger::type::worker)->set_level(spdlog::level::debug);
+    logger::log(logger::type::server)->info() << "Starting the server...";
 
     http_server server;
     void connect(const std::string& website_path, const std::string& host, uint16_t port = 80, const std::string& website_name = "");

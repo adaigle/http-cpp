@@ -4,7 +4,7 @@
 
 #include <cassert>
 
-#include "logger.hpp"
+#include "logger.h"
 
 template <typename T>
 http_protocol_handler* http_protocol_handler::make_handle_impl(http_protocol_handler_cache& cache) noexcept
@@ -20,7 +20,7 @@ http_protocol_handler* http_protocol_handler::make_handle_impl(http_protocol_han
         assert(raw_ptr != nullptr);
         return raw_ptr;
     } catch(std::exception& e) {
-        logger::error() << e.what() << logger::endl;
+        logger::log()->error() << e.what();
         assert(false);
     }
     return nullptr;

@@ -12,7 +12,7 @@
 #include "http_exception.h"
 #include "http_structure.hpp"
 
-#include "logger.hpp"
+#include "logger.h"
 #include "identity.h"
 
 using namespace std::chrono_literals;
@@ -31,19 +31,19 @@ void http_worker::run()
         // Subscribe on everything
         inproc_status_socket.setsockopt(ZMQ_SUBSCRIBE, "", 0);
     } catch (zmq::error_t& e) {
-        logger::error() << "Server error, cannot connect the HTTP worker status channel: " << logger::endl;
-        logger::error() << "Error " << zmq_errno() << ": " << e.what() << logger::endl;
+        logger::log(logger::type::worker)->error() << "Server error, cannot connect the HTTP worker status channel: ";
+        logger::log(logger::type::worker)->error() << "Error " << zmq_errno() << ": " << e.what();
         throw e;
     }
     try {
         inproc_request_socket.connect("inproc://http_workers_requests");
     } catch (zmq::error_t& e) {
-        logger::error() << "Server error, cannot connect the HTTP worker request channel: " << logger::endl;
-        logger::error() << "Error " << zmq_errno() << ": " << e.what() << logger::endl;
+        logger::log(logger::type::worker)->error() << "Server error, cannot connect the HTTP worker request channel: ";
+        logger::log(logger::type::worker)->error() << "Error " << zmq_errno() << ": " << e.what();
         throw e;
     }
 
-    logger::info() << "Worker #" << identifier_ << " online." << logger::endl;
+    logger::log(logger::type::worker)->info() << "Worker #" << identifier_ << " online.";
 
     // Initialize the lists of sockets to poll from
     std::vector<zmq::pollitem_t> poll_items = {
@@ -64,27 +64,27 @@ void http_worker::run()
                 handle_request(inproc_request_socket);
             }
         } catch (zmq::error_t& e) {
-            logger::error() << "Exception caught in worker thread #" << identifier_ << ":" << logger::endl;
-            logger::error() << "Error " << zmq_errno() << ": " << e.what() << logger::endl;
+            logger::log(logger::type::worker)->error() << "Exception caught in worker thread #" << identifier_ << ":";
+            logger::log(logger::type::worker)->error() << "Error " << zmq_errno() << ": " << e.what();
         }
     }
 
-    logger::info() << "Worker #" << identifier_ << " shut down." << logger::endl;
+    logger::log(logger::type::worker)->info() << "Worker #" << identifier_ << " shut down.";
 }
 
 void http_worker::handle_status(zmq::socket_t& socket)
 {
     std::this_thread::sleep_for(std::chrono::milliseconds(identifier_ * 10));
 
-    logger::debug() << "Worker #" << identifier_ << ": receiving status code..." << logger::endl;
+    logger::log(logger::type::worker)->debug() << "Worker #" << identifier_ << ": receiving status code...";
     zmq::message_t status_message;
     socket.recv(&status_message);
 
     std::string status_str(static_cast<char*>(status_message.data()), status_message.size());
-    logger::info() << "Worker #" << identifier_ << ": " << status_str << logger::endl;
+    logger::log(logger::type::worker)->info() << "Worker #" << identifier_ << ": " << status_str;
 
     if (status_str == "QUIT") {
-        logger::debug() << "Closing worker #" << identifier_ << "..." << logger::endl;
+        logger::log(logger::type::worker)->debug() << "Closing worker #" << identifier_ << "...";
         running = false;
     }
 }
@@ -95,7 +95,7 @@ void http_worker::handle_request(zmq::socket_t& socket)
     id.length = socket.recv(&id.identity, id.identity.size());
 
     // Construct a transaction for the request.
-    logger::debug() << "Worker #" << identifier_ << ": processing transaction '" << id << "'." << logger::endl;
+    logger::log(logger::type::worker)->debug() << "Worker #" << identifier_ << ": processing transaction '" << id << "'.";
 
     http_response response;
     try {
@@ -120,8 +120,7 @@ void http_worker::handle_request(zmq::socket_t& socket)
         const http_request request = http_service::parse_request(frame);
         const http_website& website = find_website(request);
 
-        logger::info() << "website: " << website.host() << logger::endl;
-
+        logger::log(logger::type::worker)->info() << website.host() << " '" << request.method << " " << request.request_uri << " " << request.http_version << "'";
 
         ///////////////////////////////////////////////////
         // 3. Execute the http request.
@@ -142,21 +141,20 @@ void http_worker::handle_request(zmq::socket_t& socket)
     socket.send(&id.identity, id.length, ZMQ_SNDMORE);
     socket.send(string_response.c_str(), string_response.size());
 
-    logger::type response_type;
+    std::string line;
+    std::istringstream input(string_response);
+    std::getline(input, line);
     switch (http_constants::get_status_class(response.status_code)) {
         case http_constants::status_class::informational:
-        case http_constants::status_class::redirection: response_type = logger::type::info; break;
-        case http_constants::status_class::success: response_type = logger::type::info_green; break;
-        case http_constants::status_class::client_error: response_type = logger::type::warning; break;
-        case http_constants::status_class::server_error: response_type = logger::type::error; break;
-        default: response_type = logger::type::error;
-    }
-
-    if (logger::check_log(response_type)) {
-        std::string line;
-        std::istringstream input(string_response);
-        std::getline(input, line);
-        logger::log(response_type) << line << logger::endl;
+        case http_constants::status_class::redirection:
+            logger::log(logger::type::worker)->notice() << line; break;
+        case http_constants::status_class::success:
+            logger::log(logger::type::worker)->info() << line; break;
+        case http_constants::status_class::client_error:
+            logger::log(logger::type::worker)->warn() << line; break;
+        case http_constants::status_class::server_error:
+        default:
+            logger::log(logger::type::worker)->error() << line; break;
     }
 }
 
@@ -166,9 +164,9 @@ const http_website& http_worker::find_website(const http_request& request) const
 
     auto iter = std::find(std::cbegin(websites_), std::cend(websites_), host);
     if (iter == std::cend(websites_)) {
-        logger::warn() << "Unknown website '" << host << "' among: " << logger::endl;
+        logger::log(logger::type::worker)->warn() << "Unknown website '" << host << "' among: ";
         for (const auto& website : websites_)
-            logger::warn() << website.host() << logger::endl;
+            logger::log(logger::type::worker)->warn() << website.host();
         throw http_invalid_request("Unknown website...");
     }
 

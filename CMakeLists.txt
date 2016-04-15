@@ -53,6 +53,11 @@ endif()
 add_library(zmqcpp INTERFACE IMPORTED)
 set_property(TARGET zmqcpp PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/ext/cppzmq")
 
+###########################################################
+# Include spdlog
+add_library(spdlog INTERFACE IMPORTED)
+set_property(TARGET spdlog PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/ext/spdlog/include")
+
 ##############################################################################
 # Set compiler options
 ##############################################################################
@@ -87,7 +92,7 @@ add_executable(http-cpp
     src/http_website.h
     src/http_website.cpp
     src/zmq_utility.hpp
-    src/logger.hpp
+    src/logger.h
     src/logger.cpp
     src/runnable.h
     src/identity.h
@@ -102,12 +107,14 @@ target_link_libraries(http-cpp
     boost-filesystem
     zmq
     zmqcpp
+    spdlog
     libhttp-cpp
     ${THREADING_LIBRARY}
     ${STANDARD_LIBRARY}
 )
 
 if (WIN32)
+    set_property(TARGET http-cpp APPEND PROPERTY COMPILE_DEFINITIONS BOOST_LOG_USE_NATIVE_SYSLOG)
     set_property(TARGET http-cpp APPEND PROPERTY COMPILE_DEFINITIONS BOOST_USE_WINDOWS_H)
 endif()
 

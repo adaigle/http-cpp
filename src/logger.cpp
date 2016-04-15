@@ -1,7 +1,6 @@
-#include "logger.hpp"
+#include "logger.h"
 
-template <>
-const std::array<std::basic_string<char>, 6> basic_logger<char>::MESSAGE_TYPE_STRING = {"TRACE", "DEBUG", "INFO", "INFO", "WARN", "ERROR"};
-
-template <>
-const std::array<std::basic_string<wchar_t>, 6> basic_logger<wchar_t>::MESSAGE_TYPE_STRING = {L"TRACE", L"DEBUG", L"INFO", L"INFO", L"WARN", L"ERROR"};
+std::map<logger::type, logger::logger_t> logger::console = {
+    {logger::type::server, spdlog::stdout_logger_mt("server", true)},
+    {logger::type::worker, spdlog::stdout_logger_mt("worker", true)}
+};

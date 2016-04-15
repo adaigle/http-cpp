@@ -10,7 +10,7 @@
 #include <boost/filesystem.hpp>
 #include <boost/dll/import.hpp>
 
-#include "logger.hpp"
+#include "logger.h"
 
 magic_up http_filesystem_resource_factory::up_magic_handle_;
 
@@ -37,15 +37,15 @@ http_filesystem_resource_factory::http_filesystem_resource_factory(const std::st
         up_magic_handle_ = magic_up(::magic_open(MAGIC_ERROR | MAGIC_MIME));
 
         if (!boost::filesystem::exists(LIBMAGIC_MAGIC_FILE)) {
-            logger::error() << "Database for libmagic could not be found at '" << LIBMAGIC_MAGIC_FILE << "'." << logger::endl;
+            logger::log()->error() << "Database for libmagic could not be found at '" << LIBMAGIC_MAGIC_FILE << "'.";
             up_magic_handle_.reset();
         } else {
-            logger::trace() << "Loading magic database..." << logger::endl;
+            logger::log()->trace() << "Loading magic database...";
             ::magic_load(up_magic_handle_.get(), LIBMAGIC_MAGIC_FILE);
 
             const char* error = ::magic_error(up_magic_handle_.get());
-            if (error != nullptr) logger::warn() << "libmagic error: " << error << logger::endl;
-            else logger::debug() << "Successfully loaded magic database." << logger::endl;
+            if (error != nullptr) logger::log()->warn() << "libmagic error: " << error;
+            else logger::log()->debug() << "Successfully loaded magic database.";
         }
     }
 #endif
@@ -94,12 +94,12 @@ http_external_resource_factory::http_external_resource_factory(const std::string
     );
 
     service_.reset(service_creator_());
-    logger::info() << "Setting up library '" << library_path << "'" << logger::endl;
+    logger::log()->info() << "Setting up library '" << library_path << "'";
     service_->setup();
 }
 
 std::unique_ptr<http_resource> http_external_resource_factory::create_handle(const generic_request& request) const noexcept
 {
-    logger::info() << "Requesting: " << request.request_uri << logger::endl;
+    logger::log()->trace() << "Requesting: " << request.request_uri;
     return std::unique_ptr<http_resource>(service_->create_resource(request));
 }

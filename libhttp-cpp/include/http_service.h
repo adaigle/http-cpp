@@ -28,8 +28,8 @@ public:
         bool operator!=(const host& other) const;
         bool operator<(const host& other) const;
 
-        template <typename Stream>
-        friend Stream& operator<<(Stream&, const host&);
+        template <typename ChatT, typename Traits>
+        friend std::basic_ostream<ChatT, Traits>& operator<<(std::basic_ostream<ChatT, Traits>&, const host&);
     };
 
     /// \brief Constructor of an http service.

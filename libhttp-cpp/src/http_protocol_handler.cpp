@@ -9,7 +9,7 @@
 #include "http_protocol_one_one.h"
 #include "http_protocol_one_zero.h"
 
-#include "logger.hpp"
+#include "logger.h"
 
 http_protocol_handler::http_protocol_handler() noexcept
 {
@@ -44,7 +44,7 @@ http_protocol_handler* http_protocol_handler::get_handler(http_protocol_handler_
     if (http_version == http_protocol_one_zero::http_version)
         return make_handle_impl<http_protocol_one_zero>(cache);
 
-    logger::warn() << "Unknown http version: '" << http_version << "'." << logger::endl;
+    logger::log()->warn() << "Unknown http version: '" << http_version << "'.";
 
     return nullptr;
 }

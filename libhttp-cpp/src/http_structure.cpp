@@ -11,8 +11,6 @@
 #include <sstream>
 #include <tuple>
 
-#include "logger.hpp"
-
 generic_request http_request::to_generic() const
 {
     generic_request grequest(method, request_uri, message_body);
