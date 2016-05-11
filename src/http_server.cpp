@@ -14,10 +14,10 @@
 #include <vector>
 
 #include <boost/filesystem.hpp>
+#include <spdlog/spdlog.h>
 
 #include "http_structure.hpp"
 #include "identity.h"
-#include "logger.h"
 
 using namespace std::chrono_literals;
 
@@ -25,18 +25,20 @@ http_server::http_server(uint8_t io_threads) :
     context_(io_threads), http_socket_(context_, zmq::socket_type::stream),
     inproc_status_socket_(context_, zmq::socket_type::pub), inproc_request_socket_(context_, zmq::socket_type::dealer)
 {
+    logger_ = spdlog::get("server");
+
     try {
         inproc_status_socket_.bind("inproc://http_workers_status");
     } catch (zmq::error_t& e) {
-        logger::log(logger::type::server)->error() << "Server error, cannot bind the HTTP worker status channel: ";
-        logger::log(logger::type::server)->error() << "Error " << zmq_errno() << ": " << e.what();
+        logger_.error() << "Server error, cannot bind the HTTP worker status channel: ";
+        logger_.error() << "Error " << zmq_errno() << ": " << e.what();
         throw e;
     }
     try {
         inproc_request_socket_.bind("inproc://http_workers_requests");
     } catch (zmq::error_t& e) {
-        logger::log(logger::type::server)->error() << "Server error, cannot bind the HTTP worker request channel: ";
-        logger::log(logger::type::server)->error() << "Error " << zmq_errno() << ": " << e.what();
+        logger_.error() << "Server error, cannot bind the HTTP worker request channel: ";
+        logger_.error() << "Error " << zmq_errno() << ": " << e.what();
         throw e;
     }
 }
@@ -44,7 +46,7 @@ http_server::http_server(uint8_t io_threads) :
 void http_server::connect(const std::string& website_path, const std::string& host_name,
                           const uint16_t port /* = 80 */, const std::string& website_name /* = "" */)
 {
-    logger::log(logger::type::server)->trace() << "Connecting to port " << port << " with hostname '" << host_name << "'...";
+    logger_.trace() << "Connecting to port " << port << " with hostname '" << host_name << "'...";
 
     // TODO: Check if the port is already used.
 
@@ -68,8 +70,8 @@ void http_server::connect(const std::string& website_path, const std::string& ho
             throw;
         }
     } catch (zmq::error_t& e) {
-        logger::log(logger::type::server)->error() << "Server error, cannot connect to website '" << website_name << "' on port " << port << ".";
-        logger::log(logger::type::server)->error() << "Error " << zmq_errno() << ": " << e.what();
+        logger_->error() << "Server error, cannot connect to website '" << website_name << "' on port " << port << ".";
+        logger_->error() << "Error " << zmq_errno() << ": " << e.what();
         throw;
     }
 }
@@ -77,20 +79,20 @@ void http_server::connect(const std::string& website_path, const std::string& ho
 void http_server::run()
 {
     // Launch the worker threads...
-    logger::log(logger::type::server)->debug() << "Launching worker thread...";
+    logger_->debug() << "Launching worker thread...";
     for (size_t i = 0; i < 4; ++i) {
         workers_.emplace_front(context_, i, websites_);
         workers_.front().start();
     }
 
-    logger::log(logger::type::server)->debug() << "Sending start signal...";
+    logger_->debug() << "Sending start signal...";
     const std::string start = "START";
     zmq::message_t start_message(start.c_str(), start.size());
     inproc_status_socket_.send(start_message);
 
     std::this_thread::sleep_for(500ms);
 
-    logger::log(logger::type::server)->notice() << "Server ready.";
+    logger_->notice() << "Server ready.";
 
     // zmq_proxy doesn't work for stream sockets (identity is not sent along with the message to the same service).
     // We do the polling loop manually...
@@ -118,12 +120,12 @@ void http_server::run()
             }
         }
     } catch (zmq::error_t& e) {
-        logger::log(logger::type::server)->error() << "Server error, proxy failed due to the following zmq exception: ";
-        logger::log(logger::type::server)->error() << "Error " << zmq_errno() << ": " << e.what();
+        logger_->error() << "Server error, proxy failed due to the following zmq exception: ";
+        logger_->error() << "Error " << zmq_errno() << ": " << e.what();
         throw e;
     }
 
-    logger::log(logger::type::server)->debug() << "Shutting down server...";
+    logger_->debug() << "Shutting down server...";
 
     const std::string quit = "QUIT";
     zmq::message_t quit_message(quit.c_str(), quit.size());
@@ -132,7 +134,7 @@ void http_server::run()
         worker.stop();
     }
 
-    logger::log(logger::type::server)->info() << "Server shut down.";
+    logger_->info() << "Server shut down.";
 }
 
 void http_server::forward_as_req(zmq::socket_t& from, zmq::socket_t& to)

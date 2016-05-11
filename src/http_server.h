@@ -42,6 +42,8 @@ private:
 
     std::set<http_website> websites_;
     std::forward_list<http_worker> workers_;
+
+    std::shared_ptr<spdlog::logger> logger_;
 };
 
 
